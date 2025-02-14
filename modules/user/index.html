@@ -31,6 +31,11 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="col-md-4 text-right">
+                            <button class="btn btn-success" id="addUserBtn">
+                                <i class="fas fa-plus"></i> 添加用户
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div class="card-body">
@@ -38,6 +43,7 @@
                         <thead>
                             <tr>
                                 <th>ID</th>
+                                <th>头像</th>
                                 <th>用户名</th>
                                 <th>邮箱</th>
                                 <th>权限</th>
@@ -54,12 +60,304 @@
         </section>
     </div>
 
+    <div class="modal fade" id="userModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">用户信息</h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="userForm">
+                        <input type="hidden" id="userId">
+                        <div class="form-group">
+                            <label>用户名</label>
+                            <input type="text" class="form-control" id="username" required>
+                        </div>
+                        <div class="form-group">
+                            <label>邮箱</label>
+                            <input type="email" class="form-control" id="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label>密码</label>
+                            <input type="password" class="form-control" id="password">
+                            <small class="form-text text-muted">编辑时留空表示不修改密码</small>
+                        </div>
+                        <div class="form-group">
+                            <label>权限</label>
+                            <select class="form-control" id="permission" required>
+                                <option value="1">普通用户</option>
+                                <option value="2">高级用户</option>
+                                <option value="3">管理员</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>头像</label>
+                            <div class="input-group">
+                                <input type="file" class="form-control" id="avatarFile" accept="image/*">
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary" type="button" id="uploadBtn">上传</button>
+                                </div>
+                            </div>
+                            <img id="avatarPreview" src="/images/default-avatar.png" class="mt-2" style="max-width: 100px;">
+                            <input type="hidden" id="avatar" value="/images/default-avatar.png">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="saveUser">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.1/dist/js/adminlte.min.js"></script>
     <script>
-        // 用户列表相关的JavaScript代码将在这里实现
-        
+        $(document).ready(function() {
+            let currentPage = 1;
+            const pageSize = 10;
+            let keyword = '';
+
+            // 加载用户列表
+            function loadUserList(page = 1) {
+                const token = document.cookie.replace(/(?:(?:^|.*;\s*)token\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+                
+                $.ajax({
+                    url: '/user/list',
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    },
+                    data: {
+                        page: page,
+                        limit: pageSize,
+                        keyword: keyword
+                    },
+                    success: function(response) {
+                        if (response.err_code === 0) {
+                            renderUserList(response.data.list);
+                            renderPagination(response.data.total, response.data.page);
+                        } else {
+                            alert(response.err_msg);
+                        }
+                    },
+                    error: function(xhr) {
+                        if (xhr.status === 401) {
+                            window.parent.location.href = '/admin/login';
+                        }
+                    }
+                });
+            }
+
+            // 渲染用户列表
+            function renderUserList(users) {
+                const tbody = $('#userList');
+                tbody.empty();
+
+                users.forEach(user => {
+                    const tr = $('<tr></tr>');
+                    tr.append(`<td>${user._id}</td>`);
+                    tr.append(`<td><img src="${user.avatar}" class="img-circle" alt="用户头像" style="width: 50px; height: 50px;"></td>`);
+                    tr.append(`<td>${user.username}</td>`);
+                    tr.append(`<td>${user.email}</td>`);
+                    tr.append(`<td>${user.permission}</td>`);
+                    tr.append(`<td>${new Date(user.created_at).toLocaleString()}</td>`);
+                    tr.append(`
+                        <td>
+                            <button class="btn btn-sm btn-primary edit-user" data-id="${user._id}">编辑</button>
+                            <button class="btn btn-sm btn-danger delete-user" data-id="${user._id}">删除</button>
+                        </td>
+                    `);
+                    tbody.append(tr);
+                });
+            }
+
+            // 渲染分页
+            function renderPagination(total, currentPage) {
+                const totalPages = Math.ceil(total / pageSize);
+                const pagination = $('#pagination');
+                pagination.empty();
+
+                const ul = $('<ul class="pagination justify-content-center"></ul>');
+                
+                // 上一页
+                ul.append(`
+                    <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                        <a class="page-link" href="#" data-page="${currentPage - 1}">上一页</a>
+                    </li>
+                `);
+
+                // 页码
+                for (let i = 1; i <= totalPages; i++) {
+                    ul.append(`
+                        <li class="page-item ${i === currentPage ? 'active' : ''}">
+                            <a class="page-link" href="#" data-page="${i}">${i}</a>
+                        </li>
+                    `);
+                }
+
+                // 下一页
+                ul.append(`
+                    <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                        <a class="page-link" href="#" data-page="${currentPage + 1}">下一页</a>
+                    </li>
+                `);
+
+                pagination.append(ul);
+            }
+
+            // 上传头像
+            $('#uploadBtn').click(function() {
+                const file = $('#avatarFile')[0].files[0];
+                if (!file) {
+                    alert('请选择文件');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('avatar', file);
+
+                $.ajax({
+                    url: '/upload/avatar',
+                    method: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        if (response.err_code === 0) {
+                            $('#avatarPreview').attr('src', response.data.url);
+                            $('#avatar').val(response.data.url);
+                        } else {
+                            alert(response.err_msg);
+                        }
+                    },
+                    error: function() {
+                        alert('上传失败');
+                    }
+                });
+            });
+
+            // 添加用户按钮点击事件
+            $('#addUserBtn').click(function() {
+                $('#userForm')[0].reset();
+                $('#userId').val('');
+                $('#userModal').modal('show');
+            });
+
+            // 编辑用户
+            $('#userList').on('click', '.edit-user', function() {
+                const userId = $(this).data('id');
+                const token = document.cookie.replace(/(?:(?:^|.*;\s*)token\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+
+                $.ajax({
+                    url: '/user/info',
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    },
+                    data: { _id: userId },
+                    success: function(response) {
+                        if (response.err_code === 0) {
+                            const user = response.data;
+                            $('#userId').val(user._id);
+                            $('#username').val(user.username);
+                            $('#email').val(user.email);
+                            $('#permission').val(user.permission);
+                            $('#avatarPreview').attr('src', user.avatar);
+                            $('#avatar').val(user.avatar);
+                            $('#userModal').modal('show');
+                        } else {
+                            alert(response.err_msg);
+                        }
+                    }
+                });
+            });
+
+            // 保存用户
+            $('#saveUser').click(function() {
+                const userId = $('#userId').val();
+                const userData = {
+                    username: $('#username').val(),
+                    email: $('#email').val(),
+                    permission: $('#permission').val(),
+                    avatar: $('#avatar').val()
+                };
+
+                if ($('#password').val()) {
+                    userData.password = $('#password').val();
+                }
+
+                const token = document.cookie.replace(/(?:(?:^|.*;\s*)token\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+                
+                $.ajax({
+                    url: userId ? '/user/update' : '/user/add',
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    },
+                    data: userId ? { ...userData, _id: userId } : userData,
+                    success: function(response) {
+                        if (response.err_code === 0) {
+                            $('#userModal').modal('hide');
+                            loadUserList(currentPage);
+                        } else {
+                            alert(response.err_msg);
+                        }
+                    }
+                });
+            });
+
+            // 删除用户
+            $('#userList').on('click', '.delete-user', function() {
+                if (!confirm('确定要删除此用户吗？')) {
+                    return;
+                }
+
+                const userId = $(this).data('id');
+                const token = document.cookie.replace(/(?:(?:^|.*;\s*)token\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+
+                $.ajax({
+                    url: '/user/delete',
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    },
+                    data: { _id: userId },
+                    success: function(response) {
+                        if (response.err_code === 0) {
+                            loadUserList(currentPage);
+                        } else {
+                            alert(response.err_msg);
+                        }
+                    }
+                });
+            });
+
+            // 搜索
+            $('#searchBtn').click(function() {
+                keyword = $('#searchKeyword').val();
+                currentPage = 1;
+                loadUserList();
+            });
+
+            // 分页点击
+            $('#pagination').on('click', '.page-link', function(e) {
+                e.preventDefault();
+                const page = $(this).data('page');
+                if (page > 0) {
+                    currentPage = page;
+                    loadUserList(page);
+                }
+            });
+
+            // 初始加载
+            loadUserList();
+        });
     </script>
 </body>
 </html> 

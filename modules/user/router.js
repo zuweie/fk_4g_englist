@@ -230,4 +230,50 @@ router.post('/delete', verifyToken, checkAdminPermission, async (req, res) => {
     }
 });
 
+// 用户添加
+router.post('/add', verifyToken, checkAdminPermission, async (req, res) => {
+    const { username, email, password, permission } = req.body;
+    
+    try {
+        // 检查用户名和邮箱是否已存在
+        const existingUser = await User.findOne({
+            $or: [
+                { username: username },
+                { email: email }
+            ]
+        });
+
+        if (existingUser) {
+            return res.json({
+                err_code: 1,
+                err_msg: '用户名或邮箱已存在'
+            });
+        }
+
+        // 加密密码
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        const newUser = new User({
+            username,
+            email,
+            password: hashedPassword,
+            permission,
+            avatar: req.body.avatar || '/images/default-avatar.png'
+        });
+
+        await newUser.save();
+
+        res.json({
+            err_code: 0,
+            err_msg: 'success'
+        });
+    } catch (err) {
+        res.status(500).json({
+            err_code: 500,
+            err_msg: err.message
+        });
+    }
+});
+
 module.exports = router; 

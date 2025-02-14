@@ -34,12 +34,12 @@ mongoose.connect(process.env.MONGODB_URI.replace('?', `/${process.env.WEB_NAME}?
 // 路由配置
 const adminRoutes = require('./routes/admin');
 const userModule = require('./modules/user/router');
+const uploadRoutes = require('./routes/upload');
 
 app.use('/admin', adminRoutes);
 app.use('/user', userModule);
-app.use('/', (req, res) => {
-    res.render('index');
-})
+app.use('/upload', uploadRoutes);
+
 
 // 错误处理中间件
 app.use((err, req, res, next) => {
