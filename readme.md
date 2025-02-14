@@ -173,7 +173,6 @@ services:
 ```
 Authorization: Bearer <token>
 ```
-4. 当用户登陆后，jwt token 的 payload 中会包含用户的 _id 字段，以及 permission 字段。permission 字段的值为用户的权限级别。jwt token 保存在 cookie 中，key 为 token。path 为 /。
 
 ## 待开发功能
 
@@ -186,3 +185,34 @@ Authorization: Bearer <token>
 ## 联系方式
 
 如有问题，请联系项目原开发者或在项目 Issues 中提出。
+
+## JWT Token 说明
+
+当用户成功登录后，系统会生成一个 JWT token，包含以下信息：
+
+1. **Payload 结构**:
+```json
+{
+    "_id": "用户ID",
+    "username": "用户名",
+    "avatar": "用户头像",
+    "permission": "用户权限级别"
+}
+```
+
+2. **权限级别说明**:
+- permission = 1: 普通用户
+- permission = 2: 高级用户
+- permission = 3: 管理员
+
+3. **Token 存储**:
+- 存储位置: Cookie
+- Cookie 名称: token
+- Cookie 路径: /
+- 获取方式: document.cookie
+- 使用方式: 在 API 请求头中添加 `Authorization: Bearer <token>`
+
+4. **Token 验证**:
+- 所有需要权限的 API 都会验证 token
+- 验证失败会返回 401 状态码
+- 权限不足会返回 401 状态码

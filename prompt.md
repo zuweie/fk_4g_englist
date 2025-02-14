@@ -142,3 +142,6 @@ modules/
 
 ### 代码修改 2
 请在 /modules/user/index.html 页面中的用户列表中，添加一列，用于显示用户的头像。
+
+### 代码修改 3 
+请在 /readme.md 文件中添加说明：当用户登录后，jwt token 的 payload 中会包含用户的 _id 字段，以及 permission 字段。permission 字段的值为用户的权限级别。jwt token 保存在 cookie 中，key 为 token，path 为 /。
