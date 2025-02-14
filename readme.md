@@ -173,6 +173,7 @@ services:
 ```
 Authorization: Bearer <token>
 ```
+4. 当用户登陆后，jwt token 的 payload 中会包含用户的 _id 字段，以及 permission 字段。permission 字段的值为用户的权限级别。jwt token 保存在 cookie 中，key 为 token。path 为 /。
 
 ## 待开发功能
 
