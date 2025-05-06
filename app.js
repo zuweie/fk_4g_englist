@@ -35,11 +35,14 @@ mongoose.connect(process.env.MONGODB_URI.replace('?', `/${process.env.WEB_NAME}?
 const adminRoutes = require('./routes/admin');
 const userModule = require('./modules/user/router');
 const uploadRoutes = require('./routes/upload');
+const vocabExerciseRoutes = require('./modules/vocab_exercise/router');
 
 app.use('/admin', adminRoutes);
 app.use('/user', userModule);
 app.use('/upload', uploadRoutes);
+app.use('/vocab_exercise', vocabExerciseRoutes);
 
+// 更新后
 
 // 错误处理中间件
 app.use((err, req, res, next) => {

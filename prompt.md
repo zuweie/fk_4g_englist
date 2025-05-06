@@ -58,7 +58,7 @@ modules/
         - GET /user/list: 用户列表，以 API 形式提供。
             - 该接口首先检查请求头部是否带有 Authorization: Bearer <jwt token>，若没有，或者 jwt token 的 payload 中的 permission 字段小于 3。则返回错误码 401，错误信息为 "Unauthorized"。
 
-            - 该接口接受三个参数，page 、 limit、keyword。page 是页码，limit 是每页显示的条数。keyword 是搜索关键字，keywork 模糊匹配 username，email 这两个字段。该接口返回用户列表，包含用户_id，用户名字（username），用户头像（avatar），用户邮箱（email），用户权限（permission），用户openid（openid），用户创建时间。数据排列的方式以 created_at 字段降序排列。以上数据使用 json 打包返回。返回的格式为：
+            - 该接口接受三个参数，page 、 limit、keyword、page 是页码，limit 是每页显示的条数。keyword 是搜索关键字，keywork 模糊匹配 username，email 这两个字段。该接口返回用户列表，包含用户_id，用户名字（username），用户头像（avatar），用户邮箱（email），用户权限（permission），用户openid（openid），用户创建时间。数据排列的方式以 created_at 字段降序排列。以上数据使用 json 打包返回。返回的格式为：
             {
                 err_code: 0,
                 err_msg: "success",
@@ -118,7 +118,7 @@ modules/
 
 - 后端登录。路由地址为：/admin/login。该地址调用 /views/admin/login.html 页面，设计简约大气，使用 bootstrap 框架。简约的账户密码，输入框，登录按钮。账户输入框中，有提示词语："请输入用户名或邮箱"。密码输入框中，有提示词语："请输入密码"。当用户点击登录后，调用 /user/login 接口，若调用成功，将 token 保存在浏览器的 cookie 中，跳转到 /admin/index。
 
-- 后端控制台。路由地址为：/admin/index。当浏览器请求该地址时，首先检查 cookie 中是否存在 token，若存在，检查 token 中的 permission 是否为 3，若为 3，则调用 /views/admin/index.html 页面。若不为3。则显示权限不足，并且返回 401。当检查完用户的 permission 后，读取 modules/ 文件夹下，各个模块的文件夹中的 config.json 文件，若文件中的 inuse 字段为 true，这在 /views/admin/index.html 页面中显示该模块的入口(config.json 文件中的 name 字段)。各个模块的入口地址为 <module_name>/index。页面右边为一个 iframe。当点击左边的模块入口时，页面右边 iframe 会显示该模块的“首页” 该页面应该嵌套到 iframe 中。
+- 后端控制台。路由地址为：/admin/index。当浏览器请求该地址时，首先检查 cookie 中是否存在 token，若存在，检查 token 中的 permission 是否为 3，若为 3，则调用 /views/admin/index.html 页面。若不为3。则显示权限不足，并且返回 401。当检查完用户的 permission 后，读取 modules/ 文件夹下，各个模块的文件夹中的 config.json 文件，若文件中的 inuse 字段为 true，这在 /views/admin/index.html 页面中显示该模块的入口(config.json 文件中的 name 字段)。各个模块的入口地址为 <module_name>/index。页面右边为一个 iframe。当点击左边的模块入口时，页面右边 iframe 会显示该模块的"首页" 该页面应该嵌套到 iframe 中。
 
 ## 技术交底
 - 后端请使用 express 框架进行开发。
@@ -131,13 +131,12 @@ modules/
 - 请合理组织代码结构，代码开发过程中请写上详细的注释。
 - 请在当前根目录下生成代码。在代码生成过程中，若遇上需要我执行的命令，请暂停生成代码，待命令执行完毕后，再继续生成代码。
 
-
 ### 代码修改 1
 请帮我实现 /modules/user/index.html 页面中的用户列表相关的 JavaScript 代码。包括实现：
 - 用户列表的显示，调用相关的 api。
 - 用户编辑，调用相关的 api。
 - 用户删除，调用相关的 api。
-- 在页面的右上角添加一个“添加用户的”按钮，点击后。弹出一个用户属性对话框。属性输入包括，用户名，用户头像，邮箱，密码，权限。添加 /user/add 接口，调用此接口，添加用户。
+- 在页面的右上角添加一个"添加用户的"按钮，点击后。弹出一个用户属性对话框。属性输入包括，用户名，用户头像，邮箱，密码，权限。添加 /user/add 接口，调用此接口，添加用户。
 - 在 /routers 文件夹中添加 upload.js 文件，用实现添加文件上传的 api，该 api 用于用户头像的上传。上传的地址放在 /uploads 文件夹下。
 
 ### 代码修改 2
@@ -145,3 +144,114 @@ modules/
 
 ### 代码修改 3 
 请在 /readme.md 文件中添加说明：当用户登录后，jwt token 的 payload 中会包含用户的 _id 字段，以及 permission 字段。permission 字段的值为用户的权限级别。jwt token 保存在 cookie 中，key 为 token，path 为 /。
+
+# 小学英语单词练习模块
+## 本项目基于 'base-admin' 项目二次项目，请先仔细阅读 readme.md 文件，了解项目的基本情况。
+## 添加一个模块，名字叫 'vocab exercise'，用于实现小学英语单词练习。
+- 模块的入口地址为 '/vocab_exercise/index.html'。
+- 模块的配置文件为 'modules/vocab_exercise/config.json'。
+    - 配置文件中至少包含以下字段：
+        - name: 'vocab exercise'
+        - description: '单词练习'
+        - inuse: true
+- 模块的数据库文件为 'modules/vocab_exercise/db.js'。
+    - 数据库中包含三个表：'vocabulary' 和 'exercise' 和 'analysis'。
+    - vocabulary 表中包含以下字段：
+        - _id(string): 单词id
+        - user_id(string): 用户id
+        - tags(array): 单词标签
+        - word(string): 单词
+        - gap(array): 单词空格
+        - meaning(string): 单词意思
+        - pronunciation(string): 单词发音
+        - created_at(datetime): 创建时间
+        - updated_at(datetime): 更新时间
+    - exercise 表中包含以下字段：
+        - _id(string): 练习id
+        - name(string): 练习名称
+        - user_id(string): 练习用户id
+        - words_number(number): 单词数量
+        - words(array): 单词的id
+        - award(string): 奖励
+        - award_tips(string): 奖励提示
+        - error_words(array): 错误单词
+        - created_at(datetime): 创建时间
+        - updated_at(datetime): 更新时间
+    - analysis 表中包含以下字段：
+        - _id(string): 分析id
+        - user_id(string): 用户id
+        - error_word(string): 错误单词
+        - error_times(number): 错误次数
+        - correct_times(number): 正确次数
+        - error_rate(number): 错误率
+        - created_at(datetime): 创建时间
+        - updated_at(datetime): 更新时间
+- 模块的路由文件为 'modules/vocab_exercise/router.js'。
+    - 路由文件中包含以下路由（api）：
+        - GET /vocab_exercise/index: 单词库首页，该路由跳转到 'modules/vocab_exercise/index.html' 页面。页面是 vocabulary 的列表，包含单词id，用户名字，标签，单词，单词意思，单词空格，单词发音，单词标签， 创建时间。
+            - 当页面打开后，请调用 /vocab_exercise/list 接口，获取单词列表，并显示在页面上。
+            - 在页面中，请添加一个搜索框，用于搜索单词。
+            - 每行记录最后一列是一个操作列，包含"编辑"和"删除"按钮。
+            - 页面右上角是一个添加按钮。当用户点击添加后弹出一个添加单词对话框。对话框包含以下字段：
+                - 单词（word）：输入框，用于输入单词。
+                - 单词意思（meaning）：输入框，用于输入单词意思。
+                - 单词发音（pronunciation）：音频文件上传输入，用于上传单词发音。
+                - 单词标签（tags）：输入框，用于输入单词标签,输入为字符串数组，使用','分隔,默认值为空。
+                - 单词空格（gap）：输入框，用于输入单词填空,输入为整形数组，使用','分隔,默认值为整个单词字母的索引。
+            - 提交按钮，点击后，调用 POST /vocab_exercise/add 接口，添加单词。将字段打包成json数据提交。其中 user_id 通过 jwt token 中的 payload 得到。
+            - 当用点击编辑按钮，弹出一个编辑该单词（_id）对话框。对话框包含以下字段：
+                - 单词（word）：输入框，用于输入单词。
+                - 单词意思（meaning）：输入框，用于输入单词意思。
+                - 单词发音（pronunciation）：音频文件上传输入，用于上传单词发音。
+                - 单词标签（tags）：输入框，用于输入单词标签,输入为字符串数组，使用','分隔,默认值为空。
+                - 单词空格（gap）：输入框，用于输入单词填空,输入为整形数组，使用','分隔,默认值为整个单词字母的索引。
+            - 当用户点击编辑按钮后，调用 POST /vocab_exercise/edit/$id 接口，编辑单词。将字段打包成json数据提交。
+
+        - GET /vocab_exercise/list: 
+            - 该接口首先检查请求头部是否带有 Authorization: Bearer <jwt token>，若没有，或者 jwt token 的 payload 中的 permission 字段小于 3。则返回错误码 401，错误信息为 "Unauthorized"。
+            - 该接口接受三个参数，page 、limit、keyword。page 是页码，默认为1，limit 是每页显示的条数，默认为20。keyword 是搜索关键字，keywork 模糊匹配 word、tags、meaning 这三个字段。该接口返回单词列表，包含单词id，单词，单词意思，单词发音，单词标签。数据排列的方式以 created_at 字段降序排列。以上数据使用 json 打包返回。返回的格式为：
+            {
+                err_code: 0,
+                err_msg: "success",
+                data: {
+                    list: [
+                        {
+                            _id: "vocabulary_id",
+                            user_name: "user_name",
+                            tags: "vocabulary_tags",
+                            word: "vocabulary_word",
+                            meaning: "vocabulary_meaning",
+                            gap: "vocabulary_gap",
+                            pronunciation: "url for audio of pronunciation",
+                            created_at: "vocabulary_created_at",
+                        }
+                    ]
+                }
+            }
+            - 在匹配数据库的记录时，将匹配的记录中的 user_id 字段替换成'users'表中的 user_name 字段。
+            - gap 字段为整形的数组，意思为需要填写的字母位置，例如 word 字段为 'apple', gap 字段为[0,2,3], 则代表需要填写字母'a', 'p', 'l'。在接口返回 json 结果的时候，请将 gap 字段替换成需要填写的字母。
+
+        - POST /vocab_exercise/add: 添加单词
+            - 该接口首先检查请求头部是否带有 Authorization: Bearer <jwt token>，若没有，或者 jwt token 的 payload 中的 permission 字段小于 3。则返回错误码 401，错误信息为 "Unauthorized"。
+            - 该接口接收单词信息为参数，用户id（user_id，在jwt token 的 payload 中得到），标签（tags），单词（word），单词意思（meaning），单词发音（pronunciation），单词空格（gap）,等...。以上信息打包成为一个 json 格式的数据包，提交此接口。接口根据数据包的数据更新数据库中的信息。调用成功后返回的格式为:
+            {
+                err_code: 0,
+                err_msg: "success",
+            }
+        - POST /vocab_exercise/edit/$id: 编辑单词
+            - 该接口首先检查请求头部是否带有 Authorization: Bearer <jwt token>，若没有，或者 jwt token 的 payload 中的 permission 字段小于 3。则返回错误码 401，错误信息为 "Unauthorized"。
+            - 该接口接收单词信息为参数，标签（tags），单词（word），单词意思（meaning），单词发音（pronunciation），单词空格（gap）。以上信息打包成为一个 json 格式的数据包，提交此接口。接口根据数据包的数据更新数据库中的信息。调用成功后返回的格式为:
+            {
+                err_code: 0,
+                err_msg: "success",
+            }
+
+        - DELETE /vocab_exercise/$id: 删除单词
+            - 该接口首先检查请求头部是否带有 Authorization: Bearer <jwt token>，若没有，或者 jwt token 的 payload 中的 permission 字段小于 3。则返回错误码 401，错误信息为 "Unauthorized"。
+            - 该接口接受一个参数，单词id（$id）。
+            - 该接口调用成功后返回的格式为:
+            {
+                err_code: 0,
+                err_msg: "success",
+            }
+            

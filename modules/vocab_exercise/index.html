@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>单词练习</title>
+  <!-- 使用CDN加载Bootstrap CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+  <!-- 使用CDN加载Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <!-- 使用CDN加载AdminLTE CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2.0/dist/css/adminlte.min.css">
+  <!-- 使用CDN加载SweetAlert2 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">
+  <style>
+    .vocabulary-table th, .vocabulary-table td {
+      vertical-align: middle;
+    }
+    .audio-preview {
+      max-width: 100%;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body class="hold-transition sidebar-mini">
+  <div class="wrapper">
+    <div class="content-wrapper">
+      <section class="content-header">
+        <div class="container-fluid">
+          <div class="row mb-2">
+            <div class="col-sm-6">
+              <h1>单词库</h1>
+            </div>
+            <div class="col-sm-6">
+              <ol class="breadcrumb float-sm-right">
+                <li class="breadcrumb-item"><a href="/">首页</a></li>
+                <li class="breadcrumb-item active">单词库</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="content">
+        <div class="container-fluid">
+          <div class="row">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-header">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <h3 class="card-title">单词列表</h3>
+                    <div class="d-flex">
+                      <div class="input-group mr-2" style="width: 250px;">
+                        <input type="text" id="searchInput" class="form-control" placeholder="搜索单词...">
+                        <div class="input-group-append">
+                          <button id="searchBtn" class="btn btn-default">
+                            <i class="fas fa-search"></i>
+                          </button>
+                        </div>
+                      </div>
+                      <button id="addVocabBtn" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> 添加单词
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <table class="table table-bordered table-striped vocabulary-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>用户</th>
+                        <th>单词</th>
+                        <th>意思</th>
+                        <th>填空字母</th>
+                        <th>发音</th>
+                        <th>标签</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                      </tr>
+                    </thead>
+                    <tbody id="vocabularyList">
+                      <!-- 单词列表将通过 JavaScript 动态加载 -->
+                    </tbody>
+                  </table>
+                </div>
+                <div class="card-footer clearfix">
+                  <ul class="pagination pagination-sm m-0 float-right" id="pagination">
+                    <!-- 分页将通过 JavaScript 动态加载 -->
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- 添加/编辑单词模态框 -->
+  <div class="modal fade" id="vocabModal" tabindex="-1" role="dialog" aria-labelledby="vocabModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="vocabModalLabel">添加单词</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="vocabForm">
+            <input type="hidden" id="vocabId">
+            <div class="form-group">
+              <label for="word">单词</label>
+              <input type="text" class="form-control" id="word" required>
+            </div>
+            <div class="form-group">
+              <label for="meaning">单词意思</label>
+              <input type="text" class="form-control" id="meaning" required>
+            </div>
+            <div class="form-group">
+              <label for="pronunciation">单词发音</label>
+              <input type="file" class="form-control-file" id="pronunciation" accept="audio/*">
+              <audio id="audioPreview" class="audio-preview" controls style="display: none;"></audio>
+            </div>
+            <div class="form-group">
+              <label for="tags">单词标签 (用逗号分隔)</label>
+              <input type="text" class="form-control" id="tags" placeholder="例如: 水果,食物,颜色">
+            </div>
+            <div class="form-group">
+              <label for="gap">单词空格 (用逗号分隔的索引)</label>
+              <input type="text" class="form-control" id="gap" placeholder="例如: 0,2,3">
+              <small class="form-text text-muted">留空则默认为整个单词的所有字母</small>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+          <button type="button" class="btn btn-primary" id="saveVocabBtn">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 使用CDN加载jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <!-- 使用CDN加载Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- 使用CDN加载AdminLTE JS -->
+  <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2.0/dist/js/adminlte.min.js"></script>
+  <!-- 使用CDN加载SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
+  
+  <script>
+    $(document).ready(function() {
+      let currentPage = 1;
+      let totalPages = 1;
+      let isEditing = false;
+      let audioFile = null;
+
+      // 获取 JWT Token
+      function getToken() {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.startsWith('token=')) {
+            return cookie.substring(6);
+          }
+        }
+        return null;
+      }
+
+      // 加载单词列表
+      function loadVocabularyList(page = 1, keyword = '') {
+        const token = getToken();
+        if (!token) {
+          Swal.fire('错误', '未登录或会话已过期', 'error');
+          return;
+        }
+
+        currentPage = page;
+        
+        $.ajax({
+          url: `/vocab_exercise/list?page=${page}&limit=10&keyword=${keyword}`,
+          type: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          success: function(response) {
+            if (response.err_code === 0) {
+              const vocabularies = response.data.list;
+              let html = '';
+              
+              vocabularies.forEach(vocab => {
+                html += `
+                  <tr>
+                    <td>${vocab._id.substring(0, 8)}...</td>
+                    <td>${vocab.user_name}</td>
+                    <td>${vocab.word}</td>
+                    <td>${vocab.meaning}</td>
+                    <td>${vocab.gap}</td>
+                    <td>
+                      ${vocab.pronunciation ? 
+                        `<audio controls src="${vocab.pronunciation}" style="max-width: 150px;"></audio>` : 
+                        '无发音'}
+                    </td>
+                    <td>${vocab.tags}</td>
+                    <td>${new Date(vocab.created_at).toLocaleString()}</td>
+                    <td>
+                      <button class="btn btn-sm btn-info edit-btn" data-id="${vocab._id}">
+                        <i class="fas fa-edit"></i>
+                      </button>
+                      <button class="btn btn-sm btn-danger delete-btn" data-id="${vocab._id}">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                `;
+              });
+              
+              $('#vocabularyList').html(html);
+              
+              // 更新分页
+              updatePagination(page, Math.ceil(response.data.total / 10));
+            } else {
+              Swal.fire('错误', response.err_msg, 'error');
+            }
+          },
+          error: function(xhr) {
+            if (xhr.status === 401) {
+              Swal.fire('错误', '未授权，请确保您有足够的权限', 'error');
+            } else {
+              Swal.fire('错误', '获取单词列表失败', 'error');
+            }
+          }
+        });
+      }
+
+      // 更新分页
+      function updatePagination(currentPage, totalPages) {
+        let html = '';
+        
+        // 上一页按钮
+        html += `
+          <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" data-page="${currentPage - 1}">&laquo;</a>
+          </li>
+        `;
+        
+        // 页码按钮
+        for (let i = 1; i <= totalPages; i++) {
+          html += `
+            <li class="page-item ${i === currentPage ? 'active' : ''}">
+              <a class="page-link" href="#" data-page="${i}">${i}</a>
+            </li>
+          `;
+        }
+        
+        // 下一页按钮
+        html += `
+          <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+            <a class="page-link" href="#" data-page="${currentPage + 1}">&raquo;</a>
+          </li>
+        `;
+        
+        $('#pagination').html(html);
+      }
+
+      // 分页点击事件
+      $(document).on('click', '.page-link', function(e) {
+        e.preventDefault();
+        const page = $(this).data('page');
+        if (page > 0) {
+          loadVocabularyList(page, $('#searchInput').val());
+        }
+      });
+
+      // 搜索按钮点击事件
+      $('#searchBtn').click(function() {
+        const keyword = $('#searchInput').val();
+        loadVocabularyList(1, keyword);
+      });
+
+      // 回车键搜索
+      $('#searchInput').keypress(function(e) {
+        if (e.which === 13) {
+          $('#searchBtn').click();
+        }
+      });
+
+      // 添加单词按钮点击事件
+      $('#addVocabBtn').click(function() {
+        isEditing = false;
+        $('#vocabModalLabel').text('添加单词');
+        $('#vocabForm')[0].reset();
+        $('#vocabId').val('');
+        $('#audioPreview').hide();
+        $('#vocabModal').modal('show');
+      });
+
+      // 监听音频文件选择
+      $('#pronunciation').change(function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          audioFile = file;
+          const url = URL.createObjectURL(file);
+          $('#audioPreview').attr('src', url).show();
+        } else {
+          audioFile = null;
+          $('#audioPreview').hide();
+        }
+      });
+
+      // 保存单词按钮点击事件
+      $('#saveVocabBtn').click(function() {
+        const word = $('#word').val().trim();
+        const meaning = $('#meaning').val().trim();
+        const tags = $('#tags').val().trim();
+        const gap = $('#gap').val().trim();
+        const vocabId = $('#vocabId').val();
+
+        if (!word || !meaning) {
+          Swal.fire('错误', '单词和意思不能为空', 'error');
+          return;
+        }
+
+        const token = getToken();
+        if (!token) {
+          Swal.fire('错误', '未登录或会话已过期', 'error');
+          return;
+        }
+
+        // 先上传音频文件（如果有）
+        if (audioFile) {
+          const formData = new FormData();
+          formData.append('pronunciation', audioFile);
+
+          $.ajax({
+            url: '/upload/pronunciation',
+            type: 'POST',
+            data: formData,
+            headers: {
+              'Authorization': `Bearer ${token}`
+            },
+            processData: false,
+            contentType: false,
+            success: function(response) {
+              if (response.err_code === 0) {
+                // 上传成功，获取URL并保存单词
+                const pronunciationUrl = response.data.url;
+                saveVocabulary(word, meaning, tags, gap, pronunciationUrl, vocabId);
+              } else {
+                Swal.fire('错误', '上传音频文件失败: ' + response.err_msg, 'error');
+              }
+            },
+            error: function() {
+              Swal.fire('错误', '上传音频文件失败', 'error');
+            }
+          });
+        } else {
+          // 没有音频文件，直接保存单词
+          saveVocabulary(word, meaning, tags, gap, isEditing ? $('#audioPreview').attr('src') : '', vocabId);
+        }
+      });
+
+      // 保存单词的函数
+      function saveVocabulary(word, meaning, tags, gap, pronunciation, vocabId) {
+        const token = getToken();
+        const isEditing = !!vocabId;
+        const url = isEditing ? `/vocab_exercise/edit/${vocabId}` : '/vocab_exercise/add';
+
+        $.ajax({
+          url: url,
+          type: 'POST',
+          data: JSON.stringify({
+            word: word,
+            meaning: meaning,
+            tags: tags,
+            gap: gap,
+            pronunciation: pronunciation
+          }),
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          success: function(response) {
+            if (response.err_code === 0) {
+              $('#vocabModal').modal('hide');
+              Swal.fire('成功', isEditing ? '单词已更新' : '单词已添加', 'success');
+              loadVocabularyList();
+            } else {
+              Swal.fire('错误', response.err_msg, 'error');
+            }
+          },
+          error: function(xhr) {
+            if (xhr.status === 401) {
+              Swal.fire('错误', '未授权，请确保您有足够的权限', 'error');
+            } else {
+              Swal.fire('错误', isEditing ? '更新单词失败' : '添加单词失败', 'error');
+            }
+          }
+        });
+      }
+
+      // 编辑单词
+      $(document).on('click', '.edit-btn', function() {
+        const vocabId = $(this).data('id');
+        const token = getToken();
+        
+        if (!token) {
+          Swal.fire('错误', '未登录或会话已过期', 'error');
+          return;
+        }
+
+        // 获取单词详情
+        $.ajax({
+          url: `/vocab_exercise/${vocabId}`,
+          type: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          success: function(response) {
+            if (response.err_code === 0) {
+              const vocab = response.data;
+              isEditing = true;
+              $('#vocabModalLabel').text('编辑单词');
+              $('#vocabId').val(vocab._id);
+              $('#word').val(vocab.word);
+              $('#meaning').val(vocab.meaning);
+              $('#tags').val(vocab.tags.join(','));
+              $('#gap').val(vocab.gap.join(','));
+              
+              if (vocab.pronunciation) {
+                $('#audioPreview').attr('src', vocab.pronunciation).show();
+              } else {
+                $('#audioPreview').hide();
+              }
+              
+              $('#vocabModal').modal('show');
+            } else {
+              Swal.fire('错误', response.err_msg, 'error');
+            }
+          },
+          error: function() {
+            Swal.fire('错误', '获取单词详情失败', 'error');
+          }
+        });
+      });
+
+      // 删除单词
+      $(document).on('click', '.delete-btn', function() {
+        const vocabId = $(this).data('id');
+        
+        Swal.fire({
+          title: '确认删除',
+          text: '您确定要删除这个单词吗？此操作不可逆。',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: '是，删除它',
+          cancelButtonText: '取消'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            const token = getToken();
+            if (!token) {
+              Swal.fire('错误', '未登录或会话已过期', 'error');
+              return;
+            }
+
+            $.ajax({
+              url: `/vocab_exercise/${vocabId}`,
+              type: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${token}`
+              },
+              success: function(response) {
+                if (response.err_code === 0) {
+                  Swal.fire('已删除', '单词已成功删除', 'success');
+                  loadVocabularyList();
+                } else {
+                  Swal.fire('错误', response.err_msg, 'error');
+                }
+              },
+              error: function(xhr) {
+                if (xhr.status === 401) {
+                  Swal.fire('错误', '未授权，请确保您有足够的权限', 'error');
+                } else {
+                  Swal.fire('错误', '删除单词失败', 'error');
+                }
+              }
+            });
+          }
+        });
+      });
+
+      // 初始加载
+      loadVocabularyList();
+    });
+  </script>
+</body>
+</html> 

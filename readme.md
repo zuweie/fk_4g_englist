@@ -216,3 +216,8 @@ Authorization: Bearer <token>
 - 所有需要权限的 API 都会验证 token
 - 验证失败会返回 401 状态码
 - 权限不足会返回 401 状态码
+
+5. **文件上传**
+- 文件上传功能在 routers/upload.js 中定义
+- 文件上传路径为 public/uploads
+
