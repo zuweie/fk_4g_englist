@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>练习题编辑</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.1/dist/css/adminlte.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
+  <style>
+    .word-list {
+      height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    .word-item {
+      padding: 5px 10px;
+      margin-bottom: 5px;
+      background-color: #f8f9fa;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .word-item:hover {
+      background-color: #e9ecef;
+    }
+    .tag-buttons {
+      margin-bottom: 15px;
+    }
+    .tag-buttons .btn {
+      margin-right: 5px;
+      margin-bottom: 5px;
+    }
+    .random-buttons {
+      margin-top: 15px;
+    }
+    /* 调整 Select2 下拉框高度 */
+    .select2-container .select2-selection--single {
+      height: 38px !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+      line-height: 38px !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+      height: 36px !important;
+    }
+  </style>
+</head>
+<body class="hold-transition">
+  <div class="content-wrapper">
+    <section class="content-header">
+      <div class="container-fluid">
+        <div class="row mb-2">
+          <div class="col-sm-6">
+            <h1 id="pageTitle">添加练习题</h1>
+          </div>
+          <div class="col-sm-6">
+            <ol class="breadcrumb float-sm-right">
+              <li class="breadcrumb-item"><a href="/vocab_exercise/exercise_list">练习题列表</a></li>
+              <li class="breadcrumb-item active" id="breadcrumbTitle">添加练习题</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="content">
+      <div class="card">
+        <div class="card-body">
+          <form id="exerciseForm">
+            <input type="hidden" id="exerciseId">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label for="name">练习题名称</label>
+                  <input type="text" class="form-control" id="name" required>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label for="userId">练习人</label>
+                  <select class="form-control" id="userId">
+                    <option value="">请选择练习人</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label for="award">奖励</label>
+                  <input type="text" class="form-control" id="award">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label for="awardTips">奖励提示</label>
+                  <input type="text" class="form-control" id="awardTips">
+                </div>
+              </div>
+            </div>
+
+            <div class="row mt-4">
+              <div class="col-12">
+                <h4>单词选择</h4>
+                <div class="tag-buttons" id="tagButtons">
+                  <button type="button" class="btn btn-primary tag-btn" data-type="all">全部</button>
+                  <!-- 标签按钮将通过 JavaScript 动态加载 -->
+                  <button type="button" class="btn btn-primary tag-btn" data-type="error">常错</button>
+                  <button type="button" class="btn btn-primary tag-btn" data-type="un">未做过</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-5">
+                <h5>待选单词</h5>
+                <div class="word-list" id="availableWords">
+                  <!-- 待选单词将通过 JavaScript 动态加载 -->
+                </div>
+              </div>
+              <!-- <div class="col-md-2 text-center d-flex align-items-center justify-content-center">
+                <div>
+                  <button type="button" class="btn btn-primary mb-2" id="addAllWords">
+                    <i class="fas fa-angle-double-right"></i>
+                  </button>
+                  <button type="button" class="btn btn-primary mb-2" id="addSelectedWords">
+                    <i class="fas fa-angle-right"></i>
+                  </button>
+                  <button type="button" class="btn btn-primary mb-2" id="removeSelectedWords">
+                    <i class="fas fa-angle-left"></i>
+                  </button>
+                  <button type="button" class="btn btn-primary" id="removeAllWords">
+                    <i class="fas fa-angle-double-left"></i>
+                  </button>
+                </div>
+              </div> -->
+              <div class="col-md-5">
+                <h5>已选单词</h5>
+                <div class="word-list" id="selectedWords">
+                  <!-- 已选单词将通过 JavaScript 动态加载 -->
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-12 text-center random-buttons">
+                <button type="button" class="btn btn-secondary" id="random10">随机10个</button>
+                <button type="button" class="btn btn-secondary" id="random15">随机15个</button>
+                <button type="button" class="btn btn-secondary" id="random20">随机20个</button>
+              </div>
+            </div>
+
+            <div class="row mt-4">
+              <div class="col-12 text-center">
+                <button type="button" class="btn btn-primary" id="saveExerciseBtn">保存</button>
+                <a href="/vocab_exercise/exercise_list" class="btn btn-secondary">取消</a>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.1/dist/js/adminlte.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  
+  <script>
+    $(document).ready(function() {
+      // 初始化 Select2
+      $('#userId').select2({
+        placeholder: '请选择练习人',
+        allowClear: true
+      });
+
+      let exerciseId = '';
+      let availableWords = [];
+      let selectedWords = [];
+      let allTags = [];
+
+      // 获取 URL 参数
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('id')) {
+        exerciseId = urlParams.get('id');
+        $('#pageTitle').text('编辑练习题');
+        $('#breadcrumbTitle').text('编辑练习题');
+      }
+
+      // 获取 token
+      function getToken() {
+        return document.cookie.replace(/(?:(?:^|.*;\s*)token\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+      }
+
+      // 加载用户列表
+      function loadUsers() {
+        const token = getToken();
+        if (!token) {
+          Swal.fire('错误', '未登录或会话已过期', 'error');
+          return;
+        }
+
+        $.ajax({
+          url: '/user/list',
+          type: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          data: {
+            limit: 100
+          },
+          success: function(response) {
+            if (response.err_code === 0) {
+              const users = response.data.list;
+              let html = '<option value="">请选择练习人</option>';
+              
+              users.forEach(user => {
+                html += `<option value="${user._id}">${user.username}</option>`;
+              });
+              
+              $('#userId').html(html).trigger('change');
+              
+              // 如果是编辑模式，加载练习题信息
+              if (exerciseId) {
+                loadExerciseInfo();
+              }
+            } else {
+              Swal.fire('错误', response.err_msg, 'error');
+            }
+          },
+          error: function(xhr) {
+            if (xhr.status === 401) {
+              Swal.fire('错误', '未授权，请确保您有足够的权限', 'error');
+            } else {
+              Swal.fire('错误', '获取用户列表失败', 'error');
+            }
+          }
+        });
+      }
+
+      // 加载标签
+      function loadTags() {
+        const token = getToken();
+        if (!token) {
+          Swal.fire('错误', '未登录或会话已过期', 'error');
+          return;
+        }
+
+        $.ajax({
+          url: '/vocab_exercise/tags',
+          type: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          success: function(response) {
+            if (response.err_code === 0) {
+              allTags = response.data;
+              
+              // 渲染标签按钮
+              let html = '<button type="button" class="btn btn-primary tag-btn" data-type="all">全部</button>';
+              
+              allTags.forEach(tag => {
+                html += `<button type="button" class="btn btn-primary tag-btn" data-tag="${tag}">${tag}</button>`;
+              });
+              
+              html += '<button type="button" class="btn btn-primary tag-btn" data-type="error">常错</button>';
+              html += '<button type="button" class="btn btn-primary tag-btn" data-type="un">未做过</button>';
+              
+              $('#tagButtons').html(html);
+              
+              // 加载所有单词
+              loadWords('all');
+            } else {
+              Swal.fire('错误', response.err_msg, 'error');
+            }
+          },
+          error: function(xhr) {
+            if (xhr.status === 401) {
+              Swal.fire('错误', '未授权，请确保您有足够的权限', 'error');
+            } else {
+              Swal.fire('错误', '获取标签列表失败', 'error');
+            }
+          }
+        });
+      }
+
+      // 加载单词
+      function loadWords(type, tag) {
+        const token = getToken();
+        if (!token) {
+          Swal.fire('错误', '未登录或会话已过期', 'error');
+          return;
+        }
+
+        // 检查是否需要练习人
+        if ((type === 'error' || type === 'un') && !$('#userId').val()) {
+          Swal.fire('提示', '请先选择练习人', 'info');
+          return;
+        }
+
+        const params = {
+          type: type,
+          limit: 1000
+        };
+
+        if (type === 'tag' && tag) {
+          params.tag = tag;
+        }
+
+        if (type === 'error' || type === 'un') {
+          params.user_id = $('#userId').val();
+        }
+
+        $.ajax({
+          url: '/vocab_exercise/filter',
+          type: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          data: params,
+          success: function(response) {
+            if (response.err_code === 0) {
+              // 过滤掉已选单词
+              const selectedIds = selectedWords.map(word => word._id);
+              availableWords = response.data.filter(word => !selectedIds.includes(word._id));
+              
+              renderAvailableWords();
+            } else {
+              Swal.fire('错误', response.err_msg, 'error');
+            }
+          },
+          error: function(xhr) {
+            if (xhr.status === 401) {
+              Swal.fire('错误', '未授权，请确保您有足够的权限', 'error');
+            } else {
+              Swal.fire('错误', '获取单词列表失败', 'error');
+            }
+          }
+        });
+      }
+
+      // 渲染待选单词
+      function renderAvailableWords() {
+        let html = '';
+        
+        if (availableWords.length === 0) {
+          html = '<div class="text-center text-muted">暂无单词</div>';
+        } else {
+          availableWords.forEach(word => {
+            html += `<div class="word-item" data-id="${word._id}">${word.word}</div>`;
+          });
+        }
+        
+        $('#availableWords').html(html);
+      }
+
+      // 渲染已选单词
+      function renderSelectedWords() {
+        let html = '';
+        
+        if (selectedWords.length === 0) {
+          html = '<div class="text-center text-muted">暂无单词</div>';
+        } else {
+          selectedWords.forEach(word => {
+            html += `<div class="word-item" data-id="${word._id}">${word.word}</div>`;
+          });
+        }
+        
+        $('#selectedWords').html(html);
+      }
+
+      // 加载练习题信息
+      function loadExerciseInfo() {
+        const token = getToken();
+        if (!token) {
+          Swal.fire('错误', '未登录或会话已过期', 'error');
+          return;
+        }
+
+        $.ajax({
+          url: `/vocab_exercise/exercise/${exerciseId}`,
+          type: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          success: function(response) {
+            if (response.err_code === 0) {
+              const exercise = response.data;
+              
+              $('#exerciseId').val(exercise._id);
+              $('#name').val(exercise.name);
+              $('#userId').val(exercise.user_id).trigger('change');
+              $('#award').val(exercise.award);
+              $('#awardTips').val(exercise.award_tips);
+              
+              // 加载已选单词
+              selectedWords = exercise.words.map(word => ({
+                _id: word._id,
+                word: word.word
+              }));
+              
+              renderSelectedWords();
+              
+              // 加载待选单词
+              loadWords('all');
+            } else {
+              Swal.fire('错误', response.err_msg, 'error');
+            }
+          },
+          error: function(xhr) {
+            if (xhr.status === 401) {
+              Swal.fire('错误', '未授权，请确保您有足够的权限', 'error');
+            } else {
+              Swal.fire('错误', '获取练习题信息失败', 'error');
+            }
+          }
+        });
+      }
+
+      // 标签按钮点击事件
+      $(document).on('click', '.tag-btn', function() {
+        const type = $(this).data('type');
+        const tag = $(this).data('tag');
+        
+        if (type) {
+          loadWords(type);
+        } else if (tag) {
+          loadWords('tag', tag);
+        }
+      });
+
+      // 待选单词点击事件
+      $(document).on('click', '#availableWords .word-item', function() {
+        const wordId = $(this).data('id');
+        const word = availableWords.find(w => w._id === wordId);
+        
+        if (word) {
+          selectedWords.push(word);
+          availableWords = availableWords.filter(w => w._id !== wordId);
+          
+          renderAvailableWords();
+          renderSelectedWords();
+        }
+      });
+
+      // 已选单词点击事件
+      $(document).on('click', '#selectedWords .word-item', function() {
+        const wordId = $(this).data('id');
+        const word = selectedWords.find(w => w._id === wordId);
+        
+        if (word) {
+          availableWords.push(word);
+          selectedWords = selectedWords.filter(w => w._id !== wordId);
+          
+          renderAvailableWords();
+          renderSelectedWords();
+        }
+      });
+
+      // 添加所有单词
+      $('#addAllWords').click(function() {
+        selectedWords = [...selectedWords, ...availableWords];
+        availableWords = [];
+        
+        renderAvailableWords();
+        renderSelectedWords();
+      });
+
+      // 添加选中单词
+      $('#addSelectedWords').click(function() {
+        // 这里需要实现多选功能，暂时简化为添加第一个单词
+        if (availableWords.length > 0) {
+          const word = availableWords[0];
+          selectedWords.push(word);
+          availableWords = availableWords.filter(w => w._id !== word._id);
+          
+          renderAvailableWords();
+          renderSelectedWords();
+        }
+      });
+
+      // 移除选中单词
+      $('#removeSelectedWords').click(function() {
+        // 这里需要实现多选功能，暂时简化为移除第一个单词
+        if (selectedWords.length > 0) {
+          const word = selectedWords[0];
+          availableWords.push(word);
+          selectedWords = selectedWords.filter(w => w._id !== word._id);
+          
+          renderAvailableWords();
+          renderSelectedWords();
+        }
+      });
+
+      // 移除所有单词
+      $('#removeAllWords').click(function() {
+        availableWords = [...availableWords, ...selectedWords];
+        selectedWords = [];
+        
+        renderAvailableWords();
+        renderSelectedWords();
+      });
+
+      // 随机选择单词
+      function randomSelectWords(count) {
+        if (availableWords.length === 0) {
+          Swal.fire('提示', '没有可选的单词', 'info');
+          return;
+        }
+        
+        const shuffled = [...availableWords].sort(() => 0.5 - Math.random());
+        const selected = shuffled.slice(0, Math.min(count, shuffled.length));
+        
+        selectedWords = [...selectedWords, ...selected];
+        availableWords = availableWords.filter(word => !selected.includes(word));
+        
+        renderAvailableWords();
+        renderSelectedWords();
+      }
+
+      // 随机10个
+      $('#random10').click(function() {
+        randomSelectWords(10);
+      });
+
+      // 随机15个
+      $('#random15').click(function() {
+        randomSelectWords(15);
+      });
+
+      // 随机20个
+      $('#random20').click(function() {
+        randomSelectWords(20);
+      });
+
+      // 保存练习题
+      $('#saveExerciseBtn').click(function() {
+        const name = $('#name').val();
+        const userId = $('#userId').val();
+        const award = $('#award').val();
+        const awardTips = $('#awardTips').val();
+        
+        if (!name) {
+          Swal.fire('提示', '请输入练习题名称', 'info');
+          return;
+        }
+        
+        if (!userId) {
+          Swal.fire('提示', '请选择练习人', 'info');
+          return;
+        }
+        
+        if (selectedWords.length === 0) {
+          Swal.fire('提示', '请选择至少一个单词', 'info');
+          return;
+        }
+        
+        const token = getToken();
+        if (!token) {
+          Swal.fire('错误', '未登录或会话已过期', 'error');
+          return;
+        }
+        
+        const data = {
+          name: name,
+          user_id: userId,
+          award: award,
+          award_tips: awardTips,
+          words: selectedWords.map(word => word._id)
+        };
+        
+        const url = exerciseId ? `/vocab_exercise/exercise?id=${exerciseId}` : '/vocab_exercise/exercise';
+        
+        $.ajax({
+          url: url,
+          type: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          data: JSON.stringify(data),
+          success: function(response) {
+            if (response.err_code === 0) {
+              Swal.fire({
+                title: '成功',
+                text: exerciseId ? '练习题已更新' : '练习题已添加',
+                icon: 'success',
+                confirmButtonText: '确定'
+              }).then(() => {
+                window.location.href = '/vocab_exercise/exercise_list';
+              });
+            } else {
+              Swal.fire('错误', response.err_msg, 'error');
+            }
+          },
+          error: function(xhr) {
+            if (xhr.status === 401) {
+              Swal.fire('错误', '未授权，请确保您有足够的权限', 'error');
+            } else {
+              Swal.fire('错误', exerciseId ? '更新练习题失败' : '添加练习题失败', 'error');
+            }
+          }
+        });
+      });
+
+      // 初始化
+      loadUsers();
+      loadTags();
+    });
+  </script>
+</body>
+</html> 
