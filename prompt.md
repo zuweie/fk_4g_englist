@@ -254,4 +254,67 @@ modules/
                 err_code: 0,
                 err_msg: "success",
             }
-            
+
+## 练习题
+- 新建一个 'vocab_exercise/exercise.ejs' 页面，练习题入口地址为 '/vocab_exercise/exercise_list'。
+- 页面中包含一个练习题列表，包含以下字段：
+    - _id，练习题的id
+    - create_by，创建者
+    - user_id，练习人的id
+    - name，练习题名称
+    - words，练习题的单词
+    - award，奖励
+    - award_tips，奖励提示
+    - 每行记录最后一列是一个操作列，包含"编辑/删除"按钮。
+    - 点击"编辑"按钮后，跳转到 /vocab_exercise/exercise.ejs?id=$id 页面。
+    - 点击"删除"按钮后，调用 DELETE /vocab_exercise/exercise/$id 接口，删除练习题。
+
+- 页面风格，或者框架请保持与 /user/index.html 一致。
+- 页面右上角有个添加按钮。点击后跳转到 /vocab_exercise/exercise.ejs?id= 页面。
+- exercise.ejs 页面包含一个表单，表单包含以下字段：
+    - 练习题名称（name）：输入框，用于输入练习题名称。
+    - 练习人（user_id）：下拉框，用于选择练习人。
+    - 奖励（award）：输入框，用于输入奖励。
+    - 奖励提示（award_tips）：输入框，用于输入奖励提示。
+- 在字段下方有个单词选择框，左边的是待选单词列表，右边的是已选单词列表。当用户点击左边待选单词列表，单词移动到右边的列表。
+- 当用户点击右边的已选单词列表，单词移动到左边的待选单词列表。
+- 当用户请求该页面时，请获取所有 vocabulary 表中所有单词的 tags 字段，并且去重形成数组。然后跟据 tags 数组生成单词选择框上的筛选按钮（蓝色）。
+- 单词选择框上的单词筛选按钮，一个为“全部”（蓝色），接着是 tags 数组中的每个元素（蓝色）生成的按钮，然后是一个“常错”（蓝色）按钮，然后是一个“未做过”（蓝色）按钮。这些按钮横向排列，每行 8 个。
+- 当点击“常错”和“未做过”按钮是，需要检查练习人字段是否空，如果为空，则弹出对话框提示需要练习人，其他按钮这不用提示。点击以上的按钮点击后，调用 GET/vocab_exercise/filter 接口，获取单词列表。
+- 返回的单词出现在待选单词列表中。
+- 单词单词旋转框中下有个有三个按钮（灰色），分别是：“随机10个”，“随机15个”，“随机20个”。当点击后，从待选单词列表中随机选择相应数量单词到已选单词列表中。
+- 当用户点击提交按钮后，调用 POST /vocab_exercise/add_exercise 接口，添加练习题。将字段打包成json数据提交。其中 user_id 通过 jwt token 中的 payload 得到。
+- 添加 GET /vocab_exercise/filter 接口，用于获取单词列表。该接口接受一个 type 参数、一个limit 参数 和一个 user_id 参数。
+    - type 参数为以下：
+        - all: 返回所有单词。返回格式为, [{"_id":"vocabulary_id", "word":"vocabulary_word"}, ...]
+        - tags: 返回该标签下的所有单词, 返回格式为, [{"_id":"vocabulary_id", "word":"vocabulary_word"}, ...]
+        - error: 返回所有错误单词。返回格式为, [{"_id":"vocabulary_id", "word":"vocabulary_word (error_rate)"}, ...]
+        - un: 返回所有未做过该练习的单词。返回格式为, [{"_id":"vocabulary_id", "word":"vocabulary_word"}, ...]
+        - limit 为返回单词的数量，默认为 1000
+    - 当 type 参数为 error 时，需要跟据 user_id 参数，从 analysis 表中获取该用户的错误单词id, 从 vocabulary 表中获取这些单词(words)，返回跟据字段 error_rate 降序排列。返回格式[{"_id":"vocabulary_id", "word":"vocabulary_word (error_rate)"}, ...]
+    - 当 type 参数为 un 时，需要跟据 user_id 参数，从 analysis 表中获取已经做过测试过的单词，然后从 vocabulary 返回排除掉这些单词的单词列表。返回格式[{"_id":"vocabulary_id", "word":"vocabulary_word"}, ...]
+
+- 当参数 id 存在时，exercise.ejs 页面显示该练习题的信息，用户点击提交后，编辑该练习题。
+- 当参数 id 不存在时，exercise.ejs 页面显示添加练习题的信息，用户点击提交后，新建一条记录。
+
+- 添加 POST /vocab_exercise/exercise?id=$id 接口，用于做练习题。
+    - 该接口首先检查请求头部是否带有 Authorization: Bearer <jwt token>，若没有，或者 jwt token 的 payload 中的 permission 字段小于 3。则返回错误码 401，错误信息为 "Unauthorized"。
+    - 当请求带有 id 参数时，该请求更改当前 exercise 记录，否则新建一条记录。
+    - 将表单数据打包成 json 数据提交。若是新建记录，新记录中的 create_by 字段通过 jwt token 中的 payload 得到，否则不用修改 create_by 字段。words 字段为单词_id的数组。
+    - 调用成功后返回的格式为:
+    {
+        err_code: 0,
+        err_msg: "success",
+    }
+    - 添加成功后返回 /vocab_exercise/exercise_list.ejs 页面。
+- 添加一个 DELETE /vocab_exercise/delete_exercise/$id 接口，用于删除练习题。
+    - 该接口首先检查请求头部是否带有 Authorization: Bearer <jwt token>，若没有，或者 jwt token 的 payload 中的 permission 字段小于 3。则返回错误码 401，错误信息为 "Unauthorized"。
+    - 该接口接受一个参数，练习题id（$id）。
+    - 该接口调用成功后返回的格式为:
+    {
+        err_code: 0,
+        err_msg: "success",
+    }.
+
+
+

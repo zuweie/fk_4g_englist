@@ -3,7 +3,7 @@ const router = express.Router();
 const path = require('path');
 const { expressjwt: jwt } = require('express-jwt');
 const { Vocabulary } = require('./db');
-const { User } = require('../user/db');
+const  User  = require('../user/db');
 
 // JWT 验证中间件
 const jwtMiddleware = jwt({
@@ -51,23 +51,35 @@ router.get('/list', jwtMiddleware, checkPermission, async (req, res) => {
       .skip(skip)
       .limit(limit);
 
+    // 获取总数
+    const total = await Vocabulary.countDocuments(query);
+
     // 处理结果
     const result = [];
     for (const vocab of vocabularies) {
-      const user = await User.findOne({ _id: vocab.user_id });
-      const userName = user ? user.username : 'Unknown';
-      
-      // 处理 gap 字段，转换为需要填写的字母
-      const gapLetters = vocab.gap.map(index => vocab.word.charAt(index)).join(',');
-      
+      // 这里可能是问题所在 - 确保 User 模型存在且正确导入
+      let user_name = 'Unknown';
+      if (vocab.user_id) {
+        const user = await User.findById(vocab.user_id);
+        if (user) {
+          user_name = user.username;
+        }
+      }
+
+      // 处理 gap 字段
+      let gapLetters = '';
+      if (vocab.gap && vocab.gap.length > 0) {
+        gapLetters = vocab.gap.map(index => vocab.word[index] || '').join(', ');
+      }
+
       result.push({
         _id: vocab._id,
-        user_name: userName,
-        tags: vocab.tags.join(','),
+        user_name: user_name,
         word: vocab.word,
         meaning: vocab.meaning,
-        gap: gapLetters,
         pronunciation: vocab.pronunciation,
+        tags: vocab.tags,
+        gap: gapLetters,
         created_at: vocab.created_at
       });
     }
@@ -76,7 +88,8 @@ router.get('/list', jwtMiddleware, checkPermission, async (req, res) => {
       err_code: 0,
       err_msg: 'success',
       data: {
-        list: result
+        list: result,
+        total: total
       }
     });
   } catch (error) {
