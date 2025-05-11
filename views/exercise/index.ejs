@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>小学英语单词练习</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
+  <style>
+    body {
+      background-color: #f8f9fa;
+      padding-top: 20px;
+    }
+    .exercise-card {
+      transition: transform 0.3s;
+      margin-bottom: 20px;
+      cursor: pointer;
+    }
+    .exercise-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .unstart-card {
+      background-color: #d4edda;
+      border-color: #c3e6cb;
+    }
+    .done-card {
+      background-color: #e9ecef;
+      border-color: #dee2e6;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+    .logout-btn {
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>小学英语单词练习</h1>
+      <div>
+        <span class="mr-3">欢迎，<%= user.username %></span>
+        <button class="btn btn-sm btn-outline-secondary logout-btn" id="logoutBtn">退出登录</button>
+      </div>
+    </div>
+
+    <div class="row">
+      <% if (exercises.length === 0) { %>
+        <div class="col-12 text-center mt-5">
+          <h3>暂无练习题</h3>
+          <p class="text-muted">请联系老师为您添加练习题</p>
+        </div>
+      <% } else { %>
+        <% exercises.forEach(function(exercise, index) { %>
+          <div class="col-md-6">
+            <div class="card exercise-card <%= exercise.status === 'unstart' ? 'unstart-card' : 'done-card' %>" 
+                 data-id="<%= exercise._id %>">
+              <div class="card-body">
+                <h3 class="card-title"><%= exercise.name %></h3>
+                <p class="card-text"><%= exercise.award_tips %></p>
+                <div class="text-muted small">
+                  <% if (exercise.status === 'unstart') { %>
+                    <span class="badge badge-success">未开始</span>
+                  <% } else { %>
+                    <span class="badge badge-secondary">已完成</span>
+                  <% } %>
+                  <span class="ml-2">单词数量: <%= exercise.words.length %></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% }); %>
+      <% } %>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    $(document).ready(function() {
+      // 练习题卡片点击事件
+      $('.exercise-card').click(function() {
+        const exerciseId = $(this).data('id');
+        window.location.href = `/exercise/practice?id=${exerciseId}`;
+      });
+
+      // 退出登录
+      $('#logoutBtn').click(function() {
+        document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        window.location.href = '/exercise/login';
+      });
+    });
+  </script>
+</body>
+</html> 

@@ -36,13 +36,18 @@ const adminRoutes = require('./routes/admin');
 const userModule = require('./modules/user/router');
 const uploadRoutes = require('./routes/upload');
 const vocabExerciseRoutes = require('./modules/vocab_exercise/router');
+const exerciseRoutes = require('./routes/exercise');
 
 app.use('/admin', adminRoutes);
 app.use('/user', userModule);
 app.use('/upload', uploadRoutes);
 app.use('/vocab_exercise', vocabExerciseRoutes);
+app.use('/exercise', exerciseRoutes);
 
-// 更新后
+// 根路径重定向到练习首页
+app.get('/', (req, res) => {
+    res.redirect('/exercise/index');
+});
 
 // 错误处理中间件
 app.use((err, req, res, next) => {

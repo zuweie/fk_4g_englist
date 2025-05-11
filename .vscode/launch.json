@@ -4,66 +4,10 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "启动程序",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
+      "name": "Launch Program",
+      "skipFiles": ["<node_internals>/**"],
       "program": "${workspaceFolder}/app.js",
-      "env": {
-        "NODE_ENV": "development"
-      },
-      "console": "integratedTerminal"
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "使用 Nodemon 启动",
-      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/nodemon",
-      "program": "${workspaceFolder}/app.js",
-      "restart": true,
-      "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "env": {
-        "NODE_ENV": "development"
-      },
-      "skipFiles": [
-        "<node_internals>/**"
-      ]
-    },
-    {
-      "type": "node",
-      "request": "attach",
-      "name": "附加到进程",
-      "processId": "${command:PickProcess}",
-      "skipFiles": [
-        "<node_internals>/**"
-      ]
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "初始化数据库",
-      "program": "${workspaceFolder}/scripts/init-admin.js",
-      "console": "integratedTerminal",
-      "skipFiles": [
-        "<node_internals>/**"
-      ]
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "清理数据库",
-      "program": "${workspaceFolder}/scripts/uninit-admin.js",
-      "console": "integratedTerminal",
-      "skipFiles": [
-        "<node_internals>/**"
-      ]
-    }
-  ],
-  "compounds": [
-    {
-      "name": "启动并附加",
-      "configurations": ["使用 Nodemon 启动", "附加到进程"]
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
     }
   ]
 }

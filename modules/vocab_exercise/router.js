@@ -111,9 +111,9 @@ router.get('/list', jwtMiddleware, checkPermission, async (req, res) => {
 });
 
 // 获取练习题列表
-router.get('/exercise_list', jwtMiddleware, checkPermission, async (req, res) => {
+router.get('/exercise_items', jwtMiddleware, checkPermission, async (req, res) => {
   try {
-    console.log('获取练习题列表');
+    //console.log('获取练习题列表');
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const keyword = req.query.keyword || '';

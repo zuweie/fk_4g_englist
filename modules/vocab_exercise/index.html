@@ -99,9 +99,9 @@
               <input type="text" class="form-control" id="tags" placeholder="例如: 水果,食物,颜色">
             </div>
             <div class="form-group">
-              <label for="gap">单词空格 (用逗号分隔的索引)</label>
-              <input type="text" class="form-control" id="gap" placeholder="例如: 0,2,3">
-              <small class="form-text text-muted">留空则默认为整个单词的所有字母</small>
+              <label for="gap">单词空格</label>
+              <div id="gapCheckboxes" class="d-flex flex-wrap"></div>
+              <small class="form-text text-muted">选择需要作为填空的字母</small>
             </div>
           </form>
         </div>
@@ -263,6 +263,7 @@
         $('#vocabForm')[0].reset();
         $('#vocabId').val('');
         $('#audioPreview').hide();
+        $('#gapCheckboxes').empty();
         $('#vocabModal').modal('show');
       });
 
@@ -279,14 +280,42 @@
         }
       });
 
+      // 监听单词输入框变化，更新 gap 复选框
+      $('#word').on('input', function() {
+        updateGapCheckboxes();
+      });
+
+      // 更新 gap 复选框
+      function updateGapCheckboxes() {
+        const word = $('#word').val().trim();
+        const $gapCheckboxes = $('#gapCheckboxes');
+        $gapCheckboxes.empty();
+        
+        if (!word) return;
+        
+        // 遍历单词的每个字符（忽略空格）
+        for (let i = 0; i < word.length; i++) {
+          const letter = word[i];
+          if (letter === ' ') continue; // 忽略空格
+          
+          const checkboxId = `gap_${i}`;
+          const $checkbox = $(`
+            <div class="form-check form-check-inline mr-3 mb-2">
+              <input class="form-check-input gap-checkbox" type="checkbox" id="${checkboxId}" data-index="${i}">
+              <label class="form-check-label" for="${checkboxId}">${letter}</label>
+            </div>
+          `);
+          
+          $gapCheckboxes.append($checkbox);
+        }
+      }
+
       // 保存单词按钮点击事件
       $('#saveVocabBtn').click(function() {
         const word = $('#word').val().trim();
         const meaning = $('#meaning').val().trim();
         const tags = $('#tags').val().trim();
-        const gap = $('#gap').val().trim();
-        const vocabId = $('#vocabId').val();
-
+        
         if (!word || !meaning) {
           Swal.fire('错误', '单词和意思不能为空', 'error');
           return;
@@ -316,7 +345,7 @@
               if (response.err_code === 0) {
                 // 上传成功，获取URL并保存单词
                 const pronunciationUrl = response.data.url;
-                saveVocabulary(word, meaning, tags, gap, pronunciationUrl, vocabId);
+                saveVocabulary(word, meaning, tags, pronunciationUrl, '');
               } else {
                 Swal.fire('错误', '上传音频文件失败: ' + response.err_msg, 'error');
               }
@@ -327,16 +356,25 @@
           });
         } else {
           // 没有音频文件，直接保存单词
-          saveVocabulary(word, meaning, tags, gap, isEditing ? $('#audioPreview').attr('src') : '', vocabId);
+          saveVocabulary(word, meaning, tags, '', '');
         }
       });
 
       // 保存单词的函数
-      function saveVocabulary(word, meaning, tags, gap, pronunciation, vocabId) {
+      function saveVocabulary(word, meaning, tags, pronunciation, vocabId) {
         const token = getToken();
         const isEditing = !!vocabId;
         const url = isEditing ? `/vocab_exercise/edit/${vocabId}` : '/vocab_exercise/add';
-
+        
+        // 获取选中的 gap 复选框的索引
+        const gapIndices = [];
+        $('.gap-checkbox:checked').each(function() {
+          gapIndices.push($(this).data('index'));
+        });
+        
+        // 将 gap 索引转换为字符串
+        const gap = gapIndices.join(',');
+        
         $.ajax({
           url: url,
           type: 'POST',
@@ -396,7 +434,17 @@
               $('#word').val(vocab.word);
               $('#meaning').val(vocab.meaning);
               $('#tags').val(vocab.tags.join(','));
-              $('#gap').val(vocab.gap.join(','));
+              
+              // 更新 gap 复选框
+              updateGapCheckboxes();
+              
+              // 设置已选的 gap 复选框
+              setTimeout(() => {
+                const gapIndices = vocab.gap || [];
+                gapIndices.forEach(index => {
+                  $(`#gap_${index}`).prop('checked', true);
+                });
+              }, 100);
               
               if (vocab.pronunciation) {
                 $('#audioPreview').attr('src', vocab.pronunciation).show();

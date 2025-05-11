@@ -316,5 +316,68 @@ modules/
         err_msg: "success",
     }.
 
+## 小学英语单词练习模块的注册与登录
+### 页面：
+    - 首页，/view/index.ejs。页面中显示登录人的所属的练习题列表：
+        - 跟据登陆的者的 _id，从 exericse 表中获取该用户的练习题列表，然后显示在页面上。
+        - 练习的排列方式：
+            - 按照 execrise 字段中 status 字段排序，status 字段为 unstart 的排在最前面。
+            - 按照 execrise 字段中 created_at 字段排序，created_at 字段为创建时间，created_at 字段越早的排在越前面。
+        - 练习题排列方式以卡片方式排列，一样两个卡片，中间靠左显示 exerise 字段中的 name 字段<h3>，卡片下方显示 exerise 的 award_tips 字段<p>。exercise 的 status 字段为 unstart 的时，卡片的整体风格为浅绿色，exercise 的 status 字段为 done 时，卡片的整体风格为浅灰色。
+        - 当用户点击练习题卡片时，会跳到 /view/practice.ejs 页面。
+    - 注册或登录，/view/login.ejs。当用访问首页/view/index.ejs的时候，检测是否登陆。若果未登陆，则跳转到/view/login.ejs页面。
+    - 注册登录功能放在同一个页面，/view/login.ejs。
+    - 注册登录只需要一个输入框和登录按钮，用户仅需要输入用户名，点击登陆后，后端调用 /login api 检查提交的 username。看是否存在这个用户，若存在即可登录成功，马上生成一个 jwt token 返回给前端，并且将 token 保存在 cookie 中，key 为 token，path 为 /。然后跳转到 /view/index.ejs 页面。如不存在，新建一条用户的记录，其密码为：**888888**，权限为**1**。 并且创建后，进行 jwt token 的生成，返回给前端，并且将 token 保存在 cookie 中，key 为 token，path 为 /。然后跳转到 /view/index.ejs 页面。
+    - 练习题页面，/view/practice.ejs。页面标题为 exercise 的 name 字段，标题下面是 exercise 的 award_tips 字段。提示字段样式使用类似 markdown 的 '>' 的 note 样式。
+    - 提醒下方便是单词的练习列表，此处暂时为空，待日后再做实现。
+### 路由
+    - 生成 router/exercise.js 文件。
+    - 在router/exercise.js 中添加 /index 路由，显示首页 /view/index.ejs。
+    - 在router/exercise.js 中添加 /login 路由，显示注册登录页面 /view/login.ejs。
+    - 在router/exercise.js 中添加 /practice 路由，显示练习题页面 /view/practice.ejs。
 
+## pratice.ejs 页面的实现：
+- 当该页面被请求时，获取 exercise 对象，冲 exercise 的 words 字段中获取单词的 _id。再从 vocabulary 表中，获得要练习的单词列表。
+- 单词列表的显示方式如下：
+    - 单词练习题放在一个圆角的长方形矩形中。如同一个卡片。矩形长度占屏幕宽度 80%。
+    - 卡片中，上半部是 vocab 的 meaning 字段。然后是一条占卡片 80% 的 1px 的横线（浅灰色）。
+    - 卡片中间单词练习填空的部分，跟据 vocab 的 gap 字段，将需要填写字段用空格代替。以 Apple 为例，它的 gap 字段为 [1,3]，那么这个练习卡练习部分的 html 代码如下
 
+    ```html
+    <div class="word-container">
+            <div class="letter">A</div>
+            <div class="blank-container">
+                <div class="blank-letter" id="blank_1"></div>
+            </div>
+            <div class="letter">p</div>
+            <div class="blank-container">
+                <div class="blank-letter" id="blank_3"></div>
+            </div>
+            <div class="letter">e</div>
+        </div>
+    ```
+    其中 blank_container 的样式为一个 80 * 60 的圆角矩形，矩形的边框是深灰色的虚线段，背景颜色为白色。这个单词各个字母的排列是横排。
+    - word-container 下方又是一条横线，横线下方右下角有个小的按钮“检查”。按钮的功能稍后再实现。
+- 在单词列表最后有个蓝色的按钮"提交",提交的按钮功能稍后再实现。
+- 在页面悬浮这个一个 “橡皮擦” 的按钮，悬浮位置大概在屏幕从上往下 100px，距离右边 30px。点击的功能稍后再实现。
+
+## practice.ejs 修改：
+- practice-container 宽度扩到 100% 左右留空 10 px。
+- 每个单词练习卡跟随 practice-container 扩大，练习题的 meaning 现在靠左。
+- 单词的空格是 60 * 80，而不是 80 * 60。
+
+## practice.ejs 修改2：
+- 单词练习卡上的两个横线也同步拉长，把“检查按钮去掉”。
+- 当鼠标点击单词空格的时候，并不需要使得空格变灰。
+- 把单词中显示的字母（包括），放大一点。而且字母之间不需要额外间隔，只需要正常的字符串间隔
+
+## practice.ejs 修改3：
+- 我注意到一个细节，当英语单词字符串，有空格的时候，空格会被忽略掉。例如，“at this time”， 在at 和 this 之间的空格， this 与 time 之间的空格。在单词练习卡上会消失了。请检查相关代码，使得空格显示在英语单词练习卡中。
+
+## 关于 modules/vocab_exercise/index.html 修改，在单词列表中，用点击“添加单词”/“修改单词”的时弹出的单词“添加”或“修改”的对话框中，请修改gap字段的输入方式如下：
+- 取消文本输入框，改为 checkbox，checkbox 的选项是，字段 words 的单词中每个字符（空格忽略）。checkbox 的 item 打横放置。
+- checkbox 的 item 由 words 字段决定，在words字段的输入框加一个监听器，当 words 输入的值有变化的时候，重新生成 checkbox 的 item 选项。
+- checkbox 选中的 item 作为 gap 的值，通过"," 组成字符串，存入数据库，保持原来的数据一致性。
+
+## practice.ejs 修改4：
+- 在 practice.ejs 的 document.ready 中，完成单词练习卡中空格的初始化，我已经写了 demo 的代码。
