@@ -5,10 +5,18 @@ const jwt = require('jsonwebtoken');
 const User = require('../modules/user/db');
 const { Exercise } = require('../modules/vocab_exercise/db');
 
+
+// 提供model的静态文件
+router.get('/model.js', (req, res) => {
+  res.sendFile(path.join(__dirname, '../views/exercise/model.js'));
+});
+
 // 提供静态文件
 router.get('/blank_canvas.js', (req, res) => {
   res.sendFile(path.join(__dirname, '../views/exercise/blank_canvas.js'));
 });
+
+router.use('/model', express.static(path.join(__dirname, '../views/exercise/model')));
 
 // 首页路由
 router.get('/index', async (req, res) => {

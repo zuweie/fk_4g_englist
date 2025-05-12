@@ -380,4 +380,15 @@ modules/
 - checkbox 选中的 item 作为 gap 的值，通过"," 组成字符串，存入数据库，保持原来的数据一致性。
 
 ## practice.ejs 修改4：
-- 在 practice.ejs 的 document.ready 中，完成单词练习卡中空格的初始化，我已经写了 demo 的代码。
+- 在 practice.ejs 的 document.ready 中，完成单词练习卡中空格的初始化，我已经写了 demo 的代码（注释,伪代码）。请跟据 demo 代码帮我实现所有 blank 的进行初始化。
+- 我已经实现 blank_canvas.js 的代码与 model.js 的代码， 只需要按照 demo, 跟据 blankCanvas与 model进行初始化，不需要进行其他任何的修改
+
+# practice.ejs 修改5，添加橡皮擦的功能，当用户想要擦除单词练习卡中的空格时，点击橡皮擦按钮，可以擦除空格。
+- 当用户点击橡皮擦按钮时，鼠标变成橡皮擦的形状，鼠标进入擦除状态。当用户点击单词练习卡上的空格时，空格的 canvas 内容会被清空。变为原始状态。
+- 当用户再次点击橡皮擦，或者点击空格 canvas 以外的地方，鼠标回复原来的书写状态，
+
+# practice.ejs 修改6，我查看 blank_canvas.js 代码后注意到，当成功识别到单词后，我发现 canvas 元被移除了，换成了识别的字母。我希望作出以下修改：
+- 识别后移除 canvas 元素，换上识别的字母,这个功能保留。
+- 当用用户使用橡皮擦点击canvas 元素时，首先检查 canvas 中是否有被手写的痕迹，若 canvas 从未被手写过则不做任何动作直接返回。
+- 若 canvas 中有手写痕迹，但是未被识别出字母，则只需要将 canvas 中的手写痕迹擦除，不需要进行其他动作。
+- 若 canvas 中有手写痕迹并且被识别，跟据代码逻辑，整个 <div class="canvas-container"> <canvas>...</canvas></div>将被移除，换上识别的字母。此时，你需要将 <div class="canvas-container"> <canvas>...</canvas></div> 重新挂上html dom 上去，并且把 父节点的 data-prediction 属性设置去除。

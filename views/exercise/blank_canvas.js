@@ -11,6 +11,7 @@ class BlankCanvas {
         this.model = model;
         this.canvasId = `${parentId}-canvas`;
         this.prediction = null;
+        this.isRecognized = false;
         
         this.initCanvas();
         this.setupEvents();
@@ -18,37 +19,46 @@ class BlankCanvas {
 
     initCanvas() {
         const parent = document.getElementById(this.parentId);
-        parent.innerHTML = '';
+        if (!parent) {
+            console.error(`父元素 ${this.parentId} 不存在`);
+            return;
+        }
         
-        // 创建Canvas容器
-        const canvasContainer = document.createElement('div');
-        canvasContainer.className = 'canvas-container';
-        parent.appendChild(canvasContainer);
+        // 清空父容器
+        parent.innerHTML = '';
         
         // 创建Canvas元素
         this.canvasElement = document.createElement('canvas');
         this.canvasElement.id = this.canvasId;
-        this.canvasElement.width = 60;  // 较大的物理尺寸
-        this.canvasElement.height = 80;
-        canvasContainer.appendChild(this.canvasElement);
+        this.canvasElement.width = parent.clientWidth;  // 使用父元素的宽度
+        this.canvasElement.height = parent.clientHeight; // 使用父元素的高度
+        parent.appendChild(this.canvasElement);
         
-        // 初始化Fabric.js（确保DOM已加载）
+        // 初始化Fabric.js
         this.fabricCanvas = new fabric.Canvas(this.canvasId, {
             isDrawingMode: true,
             backgroundColor: "#ffffff",
-            preserveObjectStacking: true,
-            renderOnAddRemove: false
+            width: parent.clientWidth,
+            height: parent.clientHeight
         });
         
-        // 设置笔刷属性（关键修改）
+        // 设置笔刷属性
         this.fabricCanvas.freeDrawingBrush = new fabric.PencilBrush(this.fabricCanvas);
         this.fabricCanvas.freeDrawingBrush.color = "#000000";
-        this.fabricCanvas.freeDrawingBrush.width = 1 * (window.devicePixelRatio || 1); // 考虑DPI
-        this.fabricCanvas.freeDrawingBrush.strokeLineCap = 'round';
-        this.fabricCanvas.freeDrawingBrush.strokeLineJoin = 'round';
+        this.fabricCanvas.freeDrawingBrush.width = 3;
         
-        // 适配高DPI设备
-        this.adjustForHighDPI();
+        // 调整canvas大小以适应父容器
+        this.adjustCanvasSize();
+    }
+
+    adjustCanvasSize() {
+        const parent = document.getElementById(this.parentId);
+        if (!parent || !this.fabricCanvas) return;
+        
+        // 设置canvas尺寸与父容器一致
+        this.fabricCanvas.setWidth(parent.clientWidth);
+        this.fabricCanvas.setHeight(parent.clientHeight);
+        this.fabricCanvas.calcOffset();
     }
 
     /**
@@ -59,76 +69,96 @@ class BlankCanvas {
         this.fabricCanvas.on('mouse:down', () => {
             this.prediction = null;
         });
-    }
-    
-    adjustForHighDPI() {
-        const ratio = window.devicePixelRatio || 1;
-        const canvas = this.fabricCanvas.lowerCanvasEl;
         
-        // 调整CSS尺寸
-        canvas.style.width = canvas.width / ratio + 'px';
-        canvas.style.height = canvas.height / ratio + 'px';
+        // 绘制完成后进行预测
+        this.fabricCanvas.on('mouse:up', async () => {
+            if (this.fabricCanvas.isEmpty()) return;
+            
+            // 延迟一点时间确保绘制完成
+            setTimeout(async () => {
+                const [prediction, confidence] = await this.getPrediction();
+                if (prediction && confidence > 0.5) {
+                    // 将预测结果显示在父元素中
+                    const parent = document.getElementById(this.parentId);
+                    parent.setAttribute('data-prediction', prediction);
+                    // prediction 转成小写
+                    parent.textContent = prediction.toLowerCase();
+                    
+                    // 记录该空格已被识别
+                    this.isRecognized = true;
+                }
+            }, 1000);
+        });
+        
+        // 响应窗口大小变化
+        window.addEventListener('resize', () => {
+            this.adjustCanvasSize();
+        });
     }
 
     /**
      * 获取当前Canvas内容的预测结果
      * @returns {Promise<string|null>} 预测的字符或null(如果空白)
      */
-
     async getPrediction() {
-        if (this.fabricCanvas.isEmpty()) return null;
-        let group = null;
+        if (!this.model || this.fabricCanvas.isEmpty()) return [null, 0];
+        
         try {
-            const objects = this.fabricCanvas.getObjects();
-            if (objects.length === 0) return null;
+            // 获取canvas的数据URL
+            const dataURL = this.fabricCanvas.toDataURL();
             
-            group = new fabric.Group(objects);
-            const { left, top, width, height } = group;
+            // 创建图像对象
+            const img = new Image();
+            img.src = dataURL;
             
-            // 添加边界检查
-            const scale = window.devicePixelRatio;
-            const canvasWidth = this.fabricCanvas.width * scale;
-            const canvasHeight = this.fabricCanvas.height * scale;
+            // 等待图像加载
+            await new Promise(resolve => {
+                img.onload = resolve;
+            });
             
-            const clampedLeft = Math.max(0, left * scale);
-            const clampedTop = Math.max(0, top * scale);
-            const clampedWidth = Math.min(width * scale, canvasWidth - clampedLeft);
-            const clampedHeight = Math.min(height * scale, canvasHeight - clampedTop);
+            // 创建临时canvas获取像素数据
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = img.width;
+            tempCanvas.height = img.height;
+            const ctx = tempCanvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
             
-            // 设置willReadFrequently提示
-            const ctx = this.fabricCanvas.contextContainer;
-            ctx.canvas.willReadFrequently = true;
+            // 获取像素数据
+            const imageData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
             
-            const imageData = ctx.getImageData(
-                clampedLeft,
-                clampedTop,
-                clampedWidth,
-                clampedHeight
-            );
-            
-            const [character] = await this.model.predict(imageData);
-            return character;
+            // 使用模型预测
+            return await this.model.predict(imageData);
         } catch (error) {
             console.error("预测失败:", error);
-            return null;
-        } finally {
-            if (group) group.dispose();
+            return [null, 0];
         }
     }
+
     /**
      * 清空Canvas
      */
     clear() {
-        this.fabricCanvas.clear();
-        this.fabricCanvas.backgroundColor = '#ffffff';
-        this.prediction = null;
-    }
-    
-    /**
-     * 检查Canvas是否有内容
-     * @returns {boolean}
-     */
-    hasContent() {
-        return !this.fabricCanvas.isEmpty();
+        if (this.fabricCanvas) {
+            // 清除所有对象但保持绘图状态
+            this.fabricCanvas.clear();
+            this.fabricCanvas.backgroundColor = '#ffffff';
+            
+            // 确保绘图模式仍然启用
+            this.fabricCanvas.isDrawingMode = true;
+            
+            // 重新设置笔刷属性
+            this.fabricCanvas.freeDrawingBrush = new fabric.PencilBrush(this.fabricCanvas);
+            this.fabricCanvas.freeDrawingBrush.color = "#000000";
+            this.fabricCanvas.freeDrawingBrush.width = 3;
+            
+            // 重新渲染
+            this.fabricCanvas.renderAll();
+            
+            // 清除父元素中的文本
+            const parent = document.getElementById(this.parentId);
+            if (parent) {
+                parent.textContent = '';
+            }
+        }
     }
 }

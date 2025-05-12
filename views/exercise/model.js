@@ -10,7 +10,7 @@ class Model {
     async loadModel() {
         console.time("模型加载");
         try {
-            this._model = await tf.loadLayersModel("model/model.json");
+            this._model = await tf.loadLayersModel("/exercise/model/model.json");
             console.timeEnd("模型加载");
             return this._model;
         } catch (error) {
