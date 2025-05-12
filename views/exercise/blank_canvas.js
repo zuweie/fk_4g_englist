@@ -155,10 +155,10 @@ class BlankCanvas {
             this.fabricCanvas.renderAll();
             
             // 清除父元素中的文本
-            const parent = document.getElementById(this.parentId);
-            if (parent) {
-                parent.textContent = '';
-            }
+            // const parent = document.getElementById(this.parentId);
+            // if (parent) {
+            //     //parent.textContent = '';
+            // }
         }
     }
 }

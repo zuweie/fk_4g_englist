@@ -264,13 +264,14 @@
               
               // 检查canvas是否有手写痕迹
               const hasDrawing = hasCanvas && !blankCanvas.fabricCanvas.isEmpty();
+              this.removeAttribute('data-prediction');
               
               if (!hasCanvas && hasPrediction) {
                 // 情况1: 已被识别且canvas已被移除，需要重建canvas
                 console.log(`重建canvas: ${blankId}`);
                 
                 // 清除识别结果
-                this.removeAttribute('data-prediction');
+               
                 this.textContent = '';
                 
                 // 重新创建BlankCanvas实例
