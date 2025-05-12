@@ -392,3 +392,42 @@ modules/
 - 当用用户使用橡皮擦点击canvas 元素时，首先检查 canvas 中是否有被手写的痕迹，若 canvas 从未被手写过则不做任何动作直接返回。
 - 若 canvas 中有手写痕迹，但是未被识别出字母，则只需要将 canvas 中的手写痕迹擦除，不需要进行其他动作。
 - 若 canvas 中有手写痕迹并且被识别，跟据代码逻辑，整个 <div class="canvas-container"> <canvas>...</canvas></div>将被移除，换上识别的字母。此时，你需要将 <div class="canvas-container"> <canvas>...</canvas></div> 重新挂上html dom 上去，并且把 父节点的 data-prediction 属性设置去除。
+
+# practice.ejs 修改7。
+- 在页面中维护一个错误单词数组，该数组是单词 vocab 的 _id 的数组。
+- 当用户提交答案后，有如下动作：
+    - 检查用户提交的答案，若有错误的单词卡显示灰色风格，若正确则显示绿色风格。
+    - 若答案全部正确，弹出对话框显示“恭喜你，全对/n 奖励：{exercise.award}”。当用户点击确定后，调用 POST /vocab_exercise/done/:id 接口，然后返回 index.ejs（练习题）页面。
+    - 若答案有错误，则将错误的 vocab 的 _id 存入错误单词数组中，并且弹出对话框显示“答对{right}个，答错{wrong}个，请继续努力！”。当用户点击确定后，调用 POST /vocab_exercise/error/:user_id 接口，然后对话框消失，practice 页面中移除答对的单词卡，保留答错的单词卡，单词卡的 gap 空格清空，等待用户再次手写。
+    - 在 modules/vocab_exercise/routes.js 添加如下接口：
+        - POST /vocab_exercise/done/:id：
+            - 该接口接受两个参数，exercise 的 _id，user 的 _id，user_id 通过 jwt token 中的 payload 得到。
+            - 该api通过 exercise 的 _id 从 exercise 表中获取 exercise 对象。
+            - 检查 exercise 的 user_id 字段是否与 user_id 相等，若不相等则返回错误码 401，错误信息为 "Unauthorized"。
+            - 将 exercise 的 status 字段设置为 done。
+            - 该接口调用成功后返回的格式为:
+            {
+                err_code: 0,
+                err_msg: "success",
+            }
+    - 在modules/vocab_exercise/routes.js 中添加如下接口，在接口在用户提交答案出现错误时调用：
+        - POST /vocab_exercise/error/:user_id
+            - user_id 通过 jwt token 中的 payload 得到。
+            - [vocab_id, ...] 为错误单词的 _id 的数组。
+            - 通过 user_id 与 vocab_id 从 analysis 表中获取 analysis 对象。
+            - 若没有获得 analysis 对象即生成一条对象：
+                {
+                    user_id: user_id,
+                    vocab_id: vocab_id,
+                    error_times: 1,
+                    hit_times: 1,
+                    error_rate: 100,
+                }
+            - 若获得 analysis 对象，则将 error_times 字段加 1，hit_times 字段减 1，error_rate 字段为 error_times 除以 hit_times 的值。
+            - 该接口调用成功后返回的格式为:
+            {
+                err_code: 0,
+                err_msg: "success",
+            }
+- 在单词卡上添加一个查看单词的的按钮，在单词卡上的第二条横线下方，显示一个图标：闭眼的图标（使用输入密码的闭眼开眼图标）。当用户点击后，在图标为睁眼状态，旁边显示单词的正确拼写，并且将需要填写的字母加粗显示，变成蓝色，其他为正常黑色字体。20秒后，图标恢复闭眼状态，单词消失。
+- 点击该按钮，将该单词的 _id 存入错误单词数组中。

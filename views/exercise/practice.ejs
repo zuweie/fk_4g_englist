@@ -38,6 +38,15 @@
       box-shadow: 0 3px 10px rgba(0,0,0,0.1);
       padding: 20px;
       background-color: white;
+      transition: background-color 0.3s;
+    }
+    .word-card.correct {
+      background-color: #d4edda;
+      border-color: #c3e6cb;
+    }
+    .word-card.incorrect {
+      background-color: #f8d7da;
+      border-color: #f5c6cb;
     }
     .word-meaning {
       font-size: 18px;
@@ -112,19 +121,32 @@
       justify-content: center;
       align-items: center;
       cursor: pointer;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
       z-index: 1000;
     }
     .eraser-btn i {
       font-size: 24px;
       color: #6c757d;
     }
-    .nav-buttons {
+    .word-actions {
       display: flex;
-      justify-content: space-between;
-      margin-top: 30px;
+      justify-content: flex-end;
+      margin-top: 10px;
     }
-
+    .peek-btn {
+      background: none;
+      border: none;
+      color: #6c757d;
+      cursor: pointer;
+    }
+    .word-reveal {
+      display: none;
+      margin-top: 10px;
+      font-size: 24px;
+    }
+    .word-reveal .gap-letter {
+      color: #007bff;
+      font-weight: bold;
+    }
 
     .canvas-container {
       position: absolute !important;
@@ -140,86 +162,77 @@
     touch-action: none; /* 防止移动端手势干扰 */
 }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
+  <script src="/exercise/model.js"></script>
+  <script src="/exercise/blank_canvas.js"></script>
 </head>
 <body>
   <div class="practice-container">
-    <h2 class="practice-title"><%= exercise.name %></h2>
-    
+    <h1 class="practice-title"><%= exercise.name %></h1>
     <div class="practice-tips">
       <%= exercise.award_tips %>
     </div>
     
-    <% if (words.length === 0) { %>
-      <div class="alert alert-info">
-        <p class="mb-0">该练习题没有单词，请联系老师添加单词。</p>
-      </div>
-    <% } else { %>
+    <div id="wordCards">
       <% words.forEach(function(word, wordIndex) { %>
-        <div class="word-card" id="word-<%= wordIndex %>">
+        <div class="word-card" id="word-<%= wordIndex %>" data-id="<%= word._id %>" data-word="<%= word.word %>">
           <div class="word-meaning"><%= word.meaning %></div>
           <div class="divider"></div>
-          
           <div class="word-container">
             <% 
-              const wordText = word.word;
-              const gaps = word.gap || [];
-              
-              for (let index = 0; index < wordText.length; index++) {
-                const letter = wordText[index];
-                
-                if (letter === ' ') {
-                  // 这是空格
+              let letterIndex = 0;
+              for (let i = 0; i < word.word.length; i++) {
+                const char = word.word[i];
+                if (char === ' ') { 
             %>
-                  <div class="space"></div>
-            <%
-                } else if (gaps.includes(index)) {
-                  // 这是需要填空的字母
+              <div class="space"></div>
+            <% } else if (word.gap.includes(i)) { %>
+              <div class="blank-container">
+                <div class="blank-letter" id="blank_<%= wordIndex %>_<%= i %>" data-correct="<%= char.toLowerCase() %>"></div>
+              </div>
+            <% } else { %>
+              <div class="letter"><%= char %></div>
+            <% }
+              letterIndex++;
+            } %>
+          </div>
+          <div class="divider"></div>
+          <div class="word-actions">
+            <button class="peek-btn" data-word-index="<%= wordIndex %>">
+              <i class="fas fa-eye-slash"></i>
+            </button>
+          </div>
+          <div class="word-reveal" id="reveal-<%= wordIndex %>">
+            <% 
+              for (let i = 0; i < word.word.length; i++) {
+                const char = word.word[i];
+                if (char === ' ') { 
             %>
-                  <div class="blank-container">
-                    <div class="blank-letter" id="blank_<%= wordIndex %>_<%= index %>" 
-                         data-word-index="<%= wordIndex %>" 
-                         data-letter-index="<%= index %>" 
-                         data-correct="<%= letter.toLowerCase() %>"></div>
-                  </div>
-            <%
-                } else {
-                  // 这是显示的字母
-            %>
-                  <div class="letter"><%= letter %></div>
-            <%
-                }
-              }
+              &nbsp;
+            <% } else if (word.gap.includes(i)) { %>
+              <span class="gap-letter"><%= char %></span>
+            <% } else { %>
+              <%= char %>
+            <% }
+              } 
             %>
           </div>
-          
-          <div class="divider"></div>
         </div>
       <% }); %>
-      
-      <button class="btn btn-primary submit-btn" id="submitBtn">提交</button>
-    <% } %>
-    
-    <div class="nav-buttons">
-      <a href="/exercise/index" class="btn btn-secondary">返回列表</a>
     </div>
+    
+    <button class="btn btn-primary submit-btn" id="submitBtn">提交</button>
   </div>
   
-  <!-- 橡皮擦按钮 -->
   <div class="eraser-btn" id="eraserBtn">
     <i class="fas fa-eraser"></i>
   </div>
-  
-  <!-- 绘图区域 -->
-  <!-- <div class="canvas-container" id="canvasContainer">
-    <canvas id="drawingCanvas"></canvas>
-  </div> -->
 
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/fabric@5.2.4/dist/fabric.min.js"></script>
-  <script src="model.js"></script>
-  <script src="blank_canvas.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
+  
   <script>
     $(document).ready(async function() {
       // 初始化模型
@@ -231,6 +244,9 @@
       
       // 橡皮擦模式标志
       let eraserMode = false;
+      
+      // 错误单词数组
+      let errorWordIds = [];
       
       // 获取所有单词卡片
       const wordCards = document.querySelectorAll('.word-card');
@@ -271,7 +287,6 @@
                 console.log(`重建canvas: ${blankId}`);
                 
                 // 清除识别结果
-               
                 this.textContent = '';
                 
                 // 重新创建BlankCanvas实例
@@ -301,27 +316,124 @@
         });
         
         if (emptyBlanks.length > 0) {
-          alert('请填写所有空格后再提交');
+          Swal.fire({
+            title: '提示',
+            text: '请填写所有空格后再提交',
+            icon: 'warning'
+          });
           return;
         }
         
         // 检查所有单词是否正确
         let allCorrect = true;
-        $('.blank-letter').each(function() {
-          const userInput = $(this).text().toLowerCase();
-          const correctLetter = $(this).data('correct');
+        let correctCount = 0;
+        let incorrectCount = 0;
+        errorWordIds = []; // 清空错误单词数组
+        
+        // 遍历所有单词卡片
+        $('.word-card').each(function() {
+          const wordCard = $(this);
+          const wordId = wordCard.data('id');
+          let wordCorrect = true;
           
-          if (userInput !== correctLetter) {
-            allCorrect = false;
-            return false; // 跳出循环
+          // 检查该单词卡片中的所有空格
+          wordCard.find('.blank-letter').each(function() {
+            const userInput = $(this).text().toLowerCase();
+            const correctLetter = $(this).data('correct').toLowerCase();
+            
+            if (userInput !== correctLetter) {
+              wordCorrect = false;
+              allCorrect = false;
+            }
+          });
+          
+          // 根据结果设置单词卡片样式
+          if (wordCorrect) {
+            wordCard.addClass('correct').removeClass('incorrect');
+            correctCount++;
+          } else {
+            wordCard.addClass('incorrect').removeClass('correct');
+            incorrectCount++;
+            errorWordIds.push(wordId);
           }
         });
         
+        // 根据结果显示不同的对话框
         if (allCorrect) {
-          alert('恭喜！所有单词都正确！');
-          // 这里可以添加更新练习状态的代码
+          Swal.fire({
+            title: '恭喜你，全对！',
+            text: '奖励：<%= exercise.award %>',
+            icon: 'success',
+            confirmButtonText: '确定'
+          }).then((result) => {
+            if (result.isConfirmed) {
+              // 调用完成练习接口
+              $.ajax({
+                url: '/vocab_exercise/done/<%= exercise._id %>',
+                type: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${getCookie('token')}`
+                },
+                success: function(response) {
+                  if (response.err_code === 0) {
+                    // 返回练习题列表页面
+                    window.location.href = '/exercise/index';
+                  } else {
+                    Swal.fire('错误', response.err_msg, 'error');
+                  }
+                },
+                error: function() {
+                  Swal.fire('错误', '标记练习完成失败', 'error');
+                }
+              });
+            }
+          });
         } else {
-          alert('有些单词不正确，请检查后再提交');
+          Swal.fire({
+            title: '继续努力！',
+            text: `答对${correctCount}个，答错${incorrectCount}个`,
+            icon: 'info',
+            confirmButtonText: '继续练习'
+          }).then((result) => {
+            if (result.isConfirmed) {
+              // 调用记录错误单词接口
+              $.ajax({
+                url: '/vocab_exercise/error/<%= user._id %>',
+                type: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${getCookie('token')}`
+                },
+                contentType: 'application/json',
+                data: JSON.stringify({ vocab_ids: errorWordIds }),
+                success: function(response) {
+                  if (response.err_code === 0) {
+                    // 移除正确的单词卡片
+                    $('.word-card.correct').fadeOut(500, function() {
+                      $(this).remove();
+                    });
+                    
+                    // 清空错误单词卡片中的空格
+                    $('.word-card.incorrect').each(function() {
+                      $(this).find('.blank-letter').each(function() {
+                        const blankId = $(this).attr('id');
+                        // 移除预测结果
+                        $(this).removeAttr('data-prediction');
+                        $(this).text('');
+                        
+                        // 重新创建BlankCanvas实例
+                        blankCanvases[blankId] = new BlankCanvas(blankId, model);
+                      });
+                    });
+                  } else {
+                    Swal.fire('错误', response.err_msg, 'error');
+                  }
+                },
+                error: function() {
+                  Swal.fire('错误', '记录错误单词失败', 'error');
+                }
+              });
+            }
+          });
         }
       });
       
@@ -374,6 +486,44 @@
           $('#eraserBtn').click();
         }
       });
+      
+      // 查看单词按钮点击事件
+      $('.peek-btn').click(function() {
+        const wordIndex = $(this).data('word-index');
+        const wordCard = $(`#word-${wordIndex}`);
+        const wordId = wordCard.data('id');
+        const revealElement = $(`#reveal-${wordIndex}`);
+        const icon = $(this).find('i');
+        
+        // 切换图标和显示状态
+        if (icon.hasClass('fa-eye-slash')) {
+          // 显示单词
+          icon.removeClass('fa-eye-slash').addClass('fa-eye');
+          revealElement.slideDown();
+          
+          // 将单词ID添加到错误单词数组
+          if (!errorWordIds.includes(wordId)) {
+            errorWordIds.push(wordId);
+          }
+          
+          // 20秒后自动隐藏
+          setTimeout(() => {
+            icon.removeClass('fa-eye').addClass('fa-eye-slash');
+            revealElement.slideUp();
+          }, 20000);
+        } else {
+          // 隐藏单词
+          icon.removeClass('fa-eye').addClass('fa-eye-slash');
+          revealElement.slideUp();
+        }
+      });
+      
+      // 获取cookie函数
+      function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+      }
     });
   </script>
 </body>

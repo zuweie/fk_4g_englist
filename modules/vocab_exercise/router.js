@@ -559,4 +559,101 @@ router.get('/:id', jwtMiddleware, checkPermission, async (req, res) => {
   }
 });
 
+// 标记练习题为完成
+router.post('/done/:id', jwtMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.auth._id;
+
+    // 获取练习题
+    const exercise = await Exercise.findById(id);
+    
+    if (!exercise) {
+      return res.status(404).json({
+        err_code: 404,
+        err_msg: 'Exercise not found'
+      });
+    }
+    
+    // 检查用户权限
+    if (exercise.user_id !== userId) {
+      return res.status(401).json({
+        err_code: 401,
+        err_msg: 'Unauthorized'
+      });
+    }
+    
+    // 更新练习题状态
+    exercise.status = 'done';
+    exercise.updated_at = new Date();
+    await exercise.save();
+    
+    res.json({
+      err_code: 0,
+      err_msg: 'success'
+    });
+  } catch (error) {
+    console.error('Error marking exercise as done:', error);
+    res.status(500).json({
+      err_code: 500,
+      err_msg: 'Internal server error'
+    });
+  }
+});
+
+// 记录错误单词
+router.post('/error/:user_id', jwtMiddleware, async (req, res) => {
+  try {
+    const { user_id } = req.params;
+    const { vocab_ids } = req.body;
+    
+    // 验证用户ID
+    if (user_id !== req.auth._id) {
+      return res.status(401).json({
+        err_code: 401,
+        err_msg: 'Unauthorized'
+      });
+    }
+    
+    // 处理每个错误单词
+    for (const vocab_id of vocab_ids) {
+      // 查找分析记录
+      let analysis = await Analysis.findOne({ 
+        user_id: user_id,
+        error_word: vocab_id
+      });
+      
+      if (!analysis) {
+        // 创建新记录
+        analysis = new Analysis({
+          user_id: user_id,
+          error_word: vocab_id,
+          hit_times: 1,
+          error_times: 1,
+          error_rate: 100
+        });
+      } else {
+        // 更新现有记录
+        analysis.error_times += 1;
+        analysis.hit_times += 1;
+        analysis.error_rate = Math.round((analysis.error_times / analysis.hit_times) * 100);
+        analysis.updated_at = new Date();
+      }
+      
+      await analysis.save();
+    }
+    
+    res.json({
+      err_code: 0,
+      err_msg: 'success'
+    });
+  } catch (error) {
+    console.error('Error recording error words:', error);
+    res.status(500).json({
+      err_code: 500,
+      err_msg: 'Internal server error'
+    });
+  }
+});
+
 module.exports = router; 
