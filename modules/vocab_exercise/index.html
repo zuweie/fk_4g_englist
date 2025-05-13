@@ -90,17 +90,12 @@
               <input type="text" class="form-control" id="meaning" required>
             </div>
             <div class="form-group">
-              <label for="pronunciation">单词发音</label>
-              <input type="file" class="form-control-file" id="pronunciation" accept="audio/*">
-              <audio id="audioPreview" controls style="display: none; max-width: 100%; margin-top: 10px;"></audio>
-            </div>
-            <div class="form-group">
               <label for="tags">单词标签 (用逗号分隔)</label>
               <input type="text" class="form-control" id="tags" placeholder="例如: 水果,食物,颜色">
             </div>
             <div class="form-group">
               <label for="gap">单词空格</label>
-              <div id="gapCheckboxes" class="d-flex flex-wrap"></div>
+              <div class="gap-container d-flex flex-wrap"></div>
               <small class="form-text text-muted">选择需要作为填空的字母</small>
             </div>
           </form>
@@ -262,138 +257,93 @@
         $('#vocabModalLabel').text('添加单词');
         $('#vocabForm')[0].reset();
         $('#vocabId').val('');
-        $('#audioPreview').hide();
-        $('#gapCheckboxes').empty();
+        $('.gap-container').empty();
         $('#vocabModal').modal('show');
       });
 
-      // 监听音频文件选择
-      $('#pronunciation').change(function(e) {
-        const file = e.target.files[0];
-        if (file) {
-          audioFile = file;
-          const url = URL.createObjectURL(file);
-          $('#audioPreview').attr('src', url).show();
-        } else {
-          audioFile = null;
-          $('#audioPreview').hide();
-        }
-      });
-
-      // 监听单词输入框变化，更新 gap 复选框
+      // 监听单词输入，更新 gap 复选框
       $('#word').on('input', function() {
         updateGapCheckboxes();
       });
 
       // 更新 gap 复选框
       function updateGapCheckboxes() {
-        const word = $('#word').val().trim();
-        const $gapCheckboxes = $('#gapCheckboxes');
-        $gapCheckboxes.empty();
+        const word = $('#word').val();
+        const container = $('.gap-container');
+        container.empty();
         
         if (!word) return;
         
-        // 遍历单词的每个字符（忽略空格）
-        for (let i = 0; i < word.length; i++) {
-          const letter = word[i];
-          if (letter === ' ') continue; // 忽略空格
-          
-          const checkboxId = `gap_${i}`;
-          const $checkbox = $(`
-            <div class="form-check form-check-inline mr-3 mb-2">
-              <input class="form-check-input gap-checkbox" type="checkbox" id="${checkboxId}" data-index="${i}">
-              <label class="form-check-label" for="${checkboxId}">${letter}</label>
+        // 移除空格后创建复选框
+        const letters = word.replace(/\s/g, '').split('');
+        
+        let html = '<div class="d-flex flex-wrap">';
+        letters.forEach((letter, index) => {
+          html += `
+            <div class="form-check mr-3 mb-2">
+              <input class="form-check-input gap-checkbox" type="checkbox" id="gap_${index}" data-index="${index}">
+              <label class="form-check-label" for="gap_${index}">${letter}</label>
             </div>
-          `);
-          
-          $gapCheckboxes.append($checkbox);
-        }
+          `;
+        });
+        html += '</div>';
+        
+        container.html(html);
       }
 
-      // 保存单词按钮点击事件
+      // 保存单词
       $('#saveVocabBtn').click(function() {
-        const word = $('#word').val().trim();
-        const meaning = $('#meaning').val().trim();
-        const tags = $('#tags').val().trim();
+        // 获取表单数据
+        const vocabId = $('#vocabId').val();
+        const word = $('#word').val();
+        const meaning = $('#meaning').val();
+        const tags = $('#tags').val().split(',').map(tag => tag.trim()).filter(tag => tag);
         
-        if (!word || !meaning) {
-          Swal.fire('错误', '单词和意思不能为空', 'error');
-          return;
-        }
-
+        // 获取选中的gap索引
+        const gapIndices = [];
+        $('.gap-checkbox:checked').each(function() {
+          const index = $(this).data('index');
+          gapIndices.push(index);
+        });
+        
+        // 准备数据 - 使用JSON而不是FormData
+        const data = {
+          word: word,
+          meaning: meaning,
+          tags: tags,
+          gap: gapIndices
+        };
+        
+        // 发送请求
         const token = getToken();
         if (!token) {
           Swal.fire('错误', '未登录或会话已过期', 'error');
           return;
         }
-
-        // 先上传音频文件（如果有）
-        if (audioFile) {
-          const formData = new FormData();
-          formData.append('pronunciation', audioFile);
-
-          $.ajax({
-            url: '/upload/pronunciation',
-            type: 'POST',
-            data: formData,
-            headers: {
-              'Authorization': `Bearer ${token}`
-            },
-            processData: false,
-            contentType: false,
-            success: function(response) {
-              if (response.err_code === 0) {
-                // 上传成功，获取URL并保存单词
-                const pronunciationUrl = response.data.url;
-                saveVocabulary(word, meaning, tags, pronunciationUrl, '');
-              } else {
-                Swal.fire('错误', '上传音频文件失败: ' + response.err_msg, 'error');
-              }
-            },
-            error: function() {
-              Swal.fire('错误', '上传音频文件失败', 'error');
-            }
-          });
-        } else {
-          // 没有音频文件，直接保存单词
-          saveVocabulary(word, meaning, tags, '', '');
+        
+        // 根据是否编辑模式决定API和方法
+        let url = '/vocab_exercise/add';
+        let method = 'POST';
+        
+        if (isEditing && vocabId) {
+          url = `/vocab_exercise/vocabulary/${vocabId}`;
+          method = 'PUT';
         }
-      });
-
-      // 保存单词的函数
-      function saveVocabulary(word, meaning, tags, pronunciation, vocabId) {
-        const token = getToken();
-        const isEditing = !!vocabId;
-        const url = isEditing ? `/vocab_exercise/edit/${vocabId}` : '/vocab_exercise/add';
-        
-        // 获取选中的 gap 复选框的索引
-        const gapIndices = [];
-        $('.gap-checkbox:checked').each(function() {
-          gapIndices.push($(this).data('index'));
-        });
-        
-        // 将 gap 索引转换为字符串
-        const gap = gapIndices.join(',');
         
         $.ajax({
           url: url,
-          type: 'POST',
-          data: JSON.stringify({
-            word: word,
-            meaning: meaning,
-            tags: tags,
-            gap: gap,
-            pronunciation: pronunciation
-          }),
+          type: method,
+          data: JSON.stringify(data),
+          contentType: 'application/json',
           headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+            'Authorization': `Bearer ${token}`
           },
           success: function(response) {
             if (response.err_code === 0) {
               $('#vocabModal').modal('hide');
               Swal.fire('成功', isEditing ? '单词已更新' : '单词已添加', 'success');
               loadVocabularyList();
+              resetForm();
             } else {
               Swal.fire('错误', response.err_msg, 'error');
             }
@@ -402,23 +352,26 @@
             if (xhr.status === 401) {
               Swal.fire('错误', '未授权，请确保您有足够的权限', 'error');
             } else {
-              Swal.fire('错误', isEditing ? '更新单词失败' : '添加单词失败', 'error');
+              Swal.fire('错误', '保存单词失败', 'error');
             }
           }
         });
-      }
+      });
 
       // 编辑单词
       $(document).on('click', '.edit-vocab', function() {
         const vocabId = $(this).data('id');
-        const token = getToken();
         
+        resetForm();
+        isEditing = true;
+        $('#vocabModalLabel').text('编辑单词');
+        
+        const token = getToken();
         if (!token) {
           Swal.fire('错误', '未登录或会话已过期', 'error');
           return;
         }
-
-        // 获取单词详情
+        
         $.ajax({
           url: `/vocab_exercise/${vocabId}`,
           type: 'GET',
@@ -428,8 +381,7 @@
           success: function(response) {
             if (response.err_code === 0) {
               const vocab = response.data;
-              isEditing = true;
-              $('#vocabModalLabel').text('编辑单词');
+              
               $('#vocabId').val(vocab._id);
               $('#word').val(vocab.word);
               $('#meaning').val(vocab.meaning);
@@ -445,12 +397,6 @@
                   $(`#gap_${index}`).prop('checked', true);
                 });
               }, 100);
-              
-              if (vocab.pronunciation) {
-                $('#audioPreview').attr('src', vocab.pronunciation).show();
-              } else {
-                $('#audioPreview').hide();
-              }
               
               $('#vocabModal').modal('show');
             } else {
@@ -509,6 +455,15 @@
           }
         });
       });
+
+      // 重置表单
+      function resetForm() {
+        $('#vocabForm')[0].reset();
+        $('#vocabId').val('');
+        $('.gap-container').empty();
+        isEditing = false;
+        $('#vocabModalLabel').text('添加单词');
+      }
 
       // 初始加载
       loadVocabularyList();

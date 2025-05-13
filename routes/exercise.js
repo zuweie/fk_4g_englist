@@ -92,18 +92,19 @@ router.post('/login', async (req, res) => {
       { expiresIn: '7d' }
     );
     
-    // 设置 cookie
-    res.cookie('token', token, { 
-      path: '/',
-      httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7天
-    });
+    // // 设置 cookie
+    // res.cookie('token', token, { 
+    //   path: '/',
+    //   httpOnly: true,
+    //   maxAge: 7 * 24 * 60 * 60 * 1000 // 7天
+    // });
     
     res.json({
       err_code: 0,
       err_msg: 'success',
       data: { token }
     });
+
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({

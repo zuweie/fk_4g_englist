@@ -14,6 +14,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(cors());
 
+// // 添加对文件上传的支持
+// const fileUpload = require('express-fileupload');
+// app.use(fileUpload({
+//   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+//   createParentPath: true
+// }));
+
 // 配置模板引擎
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));

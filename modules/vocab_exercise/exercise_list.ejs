@@ -8,6 +8,14 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.1/dist/css/adminlte.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">
+  <style>
+    .editable {
+      cursor: pointer;
+    }
+    .editable:hover {
+      background-color: #f8f9fa;
+    }
+  </style>
 </head>
 <body class="hold-transition">
   <div class="content-wrapper">
@@ -51,7 +59,7 @@
                 <th>练习单词数量</th>
                 <th>奖励</th>
                 <th>奖励提示</th>
-                <th>创建时间</th>
+                <th>状态</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -89,42 +97,53 @@
           return;
         }
 
+        currentPage = page;
+        
         $.ajax({
-          url: '/vocab_exercise/exercise_items',
+          url: `/vocab_exercise/exercise_items?page=${page}&limit=10&keyword=${keyword}`,
           type: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`
           },
-          data: {
-            page: page,
-            limit: 10,
-            keyword: keyword
-          },
           success: function(response) {
             if (response.err_code === 0) {
-              const { list, total } = response.data;
+              const exercises = response.data.list;
+              const total = response.data.total;
+              totalPages = Math.ceil(total / 10);
               
-              // 渲染表格
               let html = '';
-              if (list.length === 0) {
+              
+              if (exercises.length === 0) {
                 html = '<tr><td colspan="9" class="text-center">暂无数据</td></tr>';
               } else {
-                list.forEach(item => {
+                exercises.forEach(function(exercise) {
+                  // 格式化状态显示
+                  let statusBadge = '';
+                  if (exercise.status === 'unstart') {
+                    statusBadge = '<span class="badge badge-warning">未开始</span>';
+                  } else if (exercise.status === 'done') {
+                    statusBadge = '<span class="badge badge-success">已完成</span>';
+                  } else if (exercise.status === 'hidden') {
+                    statusBadge = '<span class="badge badge-secondary">隐藏</span>';
+                  } else {
+                    statusBadge = '<span class="badge badge-info">未知</span>';
+                  }
+                  
                   html += `
                     <tr>
-                      <td>${item._id}</td>
-                      <td>${item.name}</td>
-                      <td>${item.creator_name}</td>
-                      <td>${item.user_name}</td>
-                      <td>${item.words.length}</td>
-                      <td>${item.award}</td>
-                      <td>${item.award_tips}</td>
-                      <td>${new Date(item.created_at).toLocaleString()}</td>
+                      <td>${exercise._id}</td>
+                      <td>${exercise.name}</td>
+                      <td>${exercise.created_by_name || '未知'}</td>
+                      <td>${exercise.user_name || '未知'}</td>
+                      <td>${exercise.words.length}</td>
+                      <td class="editable reward-cell" data-id="${exercise._id}" data-value="${exercise.award || ''}">${exercise.award || '-'}</td>
+                      <td class="editable reward-tips-cell" data-id="${exercise._id}" data-value="${exercise.award_tips || ''}">${exercise.award_tips || '-'}</td>
+                      <td class="editable status-cell" data-id="${exercise._id}" data-value="${exercise.status || 'unstart'}">${statusBadge}</td>
                       <td>
-                        <a href="/vocab_exercise/exercise?id=${item._id}" class="btn btn-sm btn-info">
+                        <a href="/vocab_exercise/exercise?id=${exercise._id}" class="btn btn-sm btn-info">
                           <i class="fas fa-edit"></i> 编辑
                         </a>
-                        <button class="btn btn-sm btn-danger delete-exercise" data-id="${item._id}">
+                        <button class="btn btn-sm btn-danger delete-exercise" data-id="${exercise._id}">
                           <i class="fas fa-trash"></i> 删除
                         </button>
                       </td>
@@ -132,14 +151,9 @@
                   `;
                 });
               }
+              
               $('#exerciseList').html(html);
-              
-              // 计算总页数
-              totalPages = Math.ceil(total / 10);
-              currentPage = page;
-              
-              // 渲染分页
-              renderPagination(currentPage, totalPages);
+              renderPagination(totalPages, currentPage);
             } else {
               Swal.fire('错误', response.err_msg, 'error');
             }
@@ -148,35 +162,47 @@
             if (xhr.status === 401) {
               Swal.fire('错误', '未授权，请确保您有足够的权限', 'error');
             } else {
-              Swal.fire('错误', '获取练习题列表失败', 'error');
+              Swal.fire('错误', '加载练习题列表失败', 'error');
             }
           }
         });
       }
 
       // 渲染分页
-      function renderPagination(currentPage, totalPages) {
-        let html = '<ul class="pagination justify-content-end">';
+      function renderPagination(totalPages, currentPage) {
+        if (totalPages <= 1) {
+          $('#pagination').html('');
+          return;
+        }
+        
+        let html = '<ul class="pagination justify-content-center">';
         
         // 上一页
-        html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-                  <a class="page-link" href="#" data-page="${currentPage - 1}">上一页</a>
-                </li>`;
+        html += `
+          <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" data-page="${currentPage - 1}" aria-label="Previous">
+              <span aria-hidden="true">&laquo;</span>
+            </a>
+          </li>
+        `;
         
         // 页码
-        const startPage = Math.max(1, currentPage - 2);
-        const endPage = Math.min(totalPages, startPage + 4);
-        
-        for (let i = startPage; i <= endPage; i++) {
-          html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
-                    <a class="page-link" href="#" data-page="${i}">${i}</a>
-                  </li>`;
+        for (let i = 1; i <= totalPages; i++) {
+          html += `
+            <li class="page-item ${i === currentPage ? 'active' : ''}">
+              <a class="page-link" href="#" data-page="${i}">${i}</a>
+            </li>
+          `;
         }
         
         // 下一页
-        html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-                  <a class="page-link" href="#" data-page="${currentPage + 1}">下一页</a>
-                </li>`;
+        html += `
+          <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+            <a class="page-link" href="#" data-page="${currentPage + 1}" aria-label="Next">
+              <span aria-hidden="true">&raquo;</span>
+            </a>
+          </li>
+        `;
         
         html += '</ul>';
         $('#pagination').html(html);
@@ -250,6 +276,147 @@
           }
         });
       });
+
+      // 编辑奖励
+      $(document).on('click', '.reward-cell', function() {
+        const exerciseId = $(this).data('id');
+        const currentValue = $(this).data('value');
+        const cell = $(this);
+        
+        Swal.fire({
+          title: '编辑奖励',
+          input: 'text',
+          inputValue: currentValue,
+          showCancelButton: true,
+          confirmButtonText: '保存',
+          cancelButtonText: '取消',
+          inputValidator: (value) => {
+            return new Promise((resolve) => {
+              resolve();
+            });
+          }
+        }).then((result) => {
+          if (result.isConfirmed) {
+            updateExerciseField(exerciseId, 'reward', result.value, function() {
+              cell.text(result.value || '-');
+              cell.data('value', result.value || '');
+            });
+          }
+        });
+      });
+
+      // 编辑奖励提示
+      $(document).on('click', '.reward-tips-cell', function() {
+        const exerciseId = $(this).data('id');
+        const currentValue = $(this).data('value');
+        const cell = $(this);
+        
+        Swal.fire({
+          title: '编辑奖励提示',
+          input: 'text',
+          inputValue: currentValue,
+          showCancelButton: true,
+          confirmButtonText: '保存',
+          cancelButtonText: '取消',
+          inputValidator: (value) => {
+            return new Promise((resolve) => {
+              resolve();
+            });
+          }
+        }).then((result) => {
+          if (result.isConfirmed) {
+            updateExerciseField(exerciseId, 'reward_tips', result.value, function() {
+              cell.text(result.value || '-');
+              cell.data('value', result.value || '');
+            });
+          }
+        });
+      });
+
+      // 编辑状态
+      $(document).on('click', '.status-cell', function() {
+        const exerciseId = $(this).data('id');
+        const currentValue = $(this).data('value');
+        const cell = $(this);
+        
+        Swal.fire({
+          title: '编辑状态',
+          input: 'select',
+          inputOptions: {
+            'unstart': '未开始',
+            'done': '完成',
+            'hidden': '隐藏'
+          },
+          inputValue: currentValue,
+          showCancelButton: true,
+          confirmButtonText: '保存',
+          cancelButtonText: '取消'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            updateExerciseField(exerciseId, 'status', result.value, function() {
+              let statusBadge = '';
+              if (result.value === 'unstart') {
+                statusBadge = '<span class="badge badge-warning">未开始</span>';
+              } else if (result.value === 'done') {
+                statusBadge = '<span class="badge badge-success">已完成</span>';
+              } else if (result.value === 'hidden') {
+                statusBadge = '<span class="badge badge-secondary">隐藏</span>';
+              } else {
+                statusBadge = '<span class="badge badge-info">未知</span>';
+              }
+              
+              cell.html(statusBadge);
+              cell.data('value', result.value);
+            });
+          }
+        });
+      });
+
+      // 更新练习题字段
+      function updateExerciseField(exerciseId, field, value, callback) {
+        const token = getToken();
+        if (!token) {
+          Swal.fire('错误', '未登录或会话已过期', 'error');
+          return;
+        }
+        
+        const data = {};
+        data[field] = value;
+        
+        $.ajax({
+          url: `/vocab_exercise/update/${exerciseId}`,
+          type: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          data: JSON.stringify(data),
+          success: function(response) {
+            if (response.err_code === 0) {
+              Swal.fire({
+                title: '成功',
+                text: '更新成功',
+                icon: 'success',
+                timer: 1500,
+                showConfirmButton: false
+              });
+              
+              if (typeof callback === 'function') {
+                callback();
+              }
+            } else {
+              Swal.fire('错误', response.err_msg, 'error');
+            }
+          },
+          error: function(xhr) {
+            if (xhr.status === 401) {
+              Swal.fire('错误', '未授权，请确保您有足够的权限', 'error');
+            } else {
+              Swal.fire('错误', '更新失败', 'error');
+            }
+          }
+        });
+      }
 
       // 初始加载
       loadExerciseList();

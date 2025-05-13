@@ -425,12 +425,13 @@ router.post('/add', jwtMiddleware, checkPermission, async (req, res) => {
     const user_id = req.auth._id;
 
     // 处理标签
-    const tagsArray = tags ? tags.split(',').map(tag => tag.trim()) : [];
-    
+    //const tagsArray = tags ? tags.split(',').map(tag => tag.trim()) : [];
+    const tagsArray = tags;
     // 处理空格
     let gapArray = [];
     if (gap) {
-      gapArray = gap.split(',').map(g => parseInt(g.trim())).filter(g => !isNaN(g));
+      //gapArray = gap.split(',').map(g => parseInt(g.trim())).filter(g => !isNaN(g));
+      gapArray = gap;
     } else {
       // 默认为整个单词的字母索引
       gapArray = Array.from({ length: word.length }, (_, i) => i);
@@ -649,6 +650,114 @@ router.post('/error/:user_id', jwtMiddleware, async (req, res) => {
     });
   } catch (error) {
     console.error('Error recording error words:', error);
+    res.status(500).json({
+      err_code: 500,
+      err_msg: 'Internal server error'
+    });
+  }
+});
+
+// 更新练习题字段
+router.post('/update/:id', jwtMiddleware, checkPermission, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reward, reward_tips, status } = req.body;
+    
+    // 查找练习题
+    const exercise = await Exercise.findById(id);
+    
+    if (!exercise) {
+      return res.status(404).json({
+        err_code: 404,
+        err_msg: 'Exercise not found'
+      });
+    }
+    
+    // 更新字段
+    const updateData = {};
+    
+    if (reward !== undefined) {
+      updateData.award = reward;
+    }
+    
+    if (reward_tips !== undefined) {
+      updateData.award_tips = reward_tips;
+    }
+    
+    if (status !== undefined) {
+      updateData.status = status;
+    }
+    
+    // 更新时间
+    updateData.updated_at = new Date();
+    
+    // 执行更新
+    await Exercise.findByIdAndUpdate(id, updateData);
+    
+    res.json({
+      err_code: 0,
+      err_msg: 'success'
+    });
+  } catch (error) {
+    console.error('Error updating exercise:', error);
+    res.status(500).json({
+      err_code: 500,
+      err_msg: 'Internal server error'
+    });
+  }
+});
+
+// 更新单词
+router.put('/vocabulary/:id', jwtMiddleware, checkPermission, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { word, meaning, tags, gap } = req.body;
+    
+    // 查找单词
+    const vocabulary = await Vocabulary.findById(id);
+    
+    if (!vocabulary) {
+      return res.status(404).json({
+        err_code: 404,
+        err_msg: '单词不存在'
+      });
+    }
+    // console.log('body', req.body);
+    // console.log('word', word);
+    // console.log('meaning', meaning);
+    // console.log("tags", tags);
+
+    // 准备更新数据
+    const updateData = {
+      word: word,
+      meaning: meaning,
+      tags: tags,
+      gap: gap,
+      updated_at: new Date()
+    };
+    
+    // 处理发音文件
+    if (req.files && req.files.pronunciation) {
+      const file = req.files.pronunciation;
+      const fileName = `pronunciation_${Date.now()}_${file.name}`;
+      const filePath = path.join(__dirname, '../../public/uploads', fileName);
+      
+      // 保存文件
+      await file.mv(filePath);
+      
+      // 更新发音路径
+      updateData.pronunciation = `/uploads/${fileName}`;
+    }
+    
+    // 执行更新
+    await Vocabulary.findByIdAndUpdate(id, updateData);
+    
+    res.json({
+      err_code: 0,
+      err_msg: 'success'
+    });
+  } catch (error) {
+    console.error('Error updating vocabulary:', error);
     res.status(500).json({
       err_code: 500,
       err_msg: 'Internal server error'

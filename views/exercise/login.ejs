@@ -77,6 +77,7 @@
           data: JSON.stringify({ username }),
           success: function(response) {
             if (response.err_code === 0) {
+              document.cookie = `token=${response.data.token}; path=/`;
               window.location.href = '/exercise/index';
             } else {
               alert(response.err_msg);
