@@ -8,7 +8,13 @@ const User = require('../user/db');
 // JWT 验证中间件
 const jwtMiddleware = jwt({
   secret: process.env.JWT_SECRET,
-  algorithms: ['HS256']
+  algorithms: ['HS256'],
+  getToken: function fromHeaderOrQuerystring(req) {
+    if (req.headers.authorization && req.headers.authorization.split(' ')[0] === 'Bearer') {
+      return req.headers.authorization.split(' ')[1];
+    }
+    return null;
+  }
 });
 
 // 权限验证中间件
@@ -22,10 +28,18 @@ const checkPermission = (req, res, next) => {
   next();
 };
 
+router.use((req, res, next) => {
+  console.log(`Request path: ${req.path}`);
+  next();
+});
+
 // 单词库首页
 router.get('/index', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
+
+
+
 
 // 练习题列表页面
 router.get('/exercise_list', (req, res) => {
@@ -306,6 +320,9 @@ router.delete('/delete_exercise/:id', jwtMiddleware, checkPermission, async (req
   }
 });
 
+
+
+
 // 获取所有用户
 router.get('/users', jwtMiddleware, checkPermission, async (req, res) => {
   try {
@@ -464,6 +481,8 @@ router.post('/add', jwtMiddleware, checkPermission, async (req, res) => {
   }
 });
 
+
+
 // 编辑单词
 router.post('/edit/:id', jwtMiddleware, checkPermission, async (req, res) => {
   try {
@@ -506,7 +525,7 @@ router.post('/edit/:id', jwtMiddleware, checkPermission, async (req, res) => {
 });
 
 // 删除单词
-router.delete('/:id', jwtMiddleware, checkPermission, async (req, res) => {
+router.delete('/vocab/:id', jwtMiddleware, checkPermission, async (req, res) => {
   try {
     const { id } = req.params;
     await Vocabulary.findByIdAndDelete(id);
@@ -524,8 +543,9 @@ router.delete('/:id', jwtMiddleware, checkPermission, async (req, res) => {
   }
 });
 
-// 获取单词详情
-router.get('/:id', jwtMiddleware, checkPermission, async (req, res) => {
+
+//获取单词详情
+router.get('/vocab/:id', jwtMiddleware, checkPermission, async (req, res) => {
   try {
     const { id } = req.params;
     const vocabulary = await Vocabulary.findById(id);
@@ -560,13 +580,15 @@ router.get('/:id', jwtMiddleware, checkPermission, async (req, res) => {
   }
 });
 
-// 标记练习题为完成
+
+
+// 完成练习题接口
 router.post('/done/:id', jwtMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.auth._id;
-
-    // 获取练习题
+    const user_id = req.auth._id;
+    
+    // 查找练习题
     const exercise = await Exercise.findById(id);
     
     if (!exercise) {
@@ -577,30 +599,41 @@ router.post('/done/:id', jwtMiddleware, async (req, res) => {
     }
     
     // 检查用户权限
-    if (exercise.user_id !== userId) {
+    if (exercise.user_id !== user_id && req.auth.permission < 3) {
       return res.status(401).json({
         err_code: 401,
         err_msg: 'Unauthorized'
       });
     }
     
-    // 更新练习题状态
-    exercise.status = 'done';
-    exercise.updated_at = new Date();
-    await exercise.save();
+    // 切换状态
+    let newStatus;
+    if (exercise.status === 'done') {
+      newStatus = 'unstart';
+    } else {
+      newStatus = 'done';
+    }
+    
+    // 更新状态
+    await Exercise.findByIdAndUpdate(id, {
+      status: newStatus,
+      updated_at: new Date()
+    });
     
     res.json({
       err_code: 0,
       err_msg: 'success'
     });
   } catch (error) {
-    console.error('Error marking exercise as done:', error);
+    console.error('Error updating exercise status:', error);
     res.status(500).json({
       err_code: 500,
       err_msg: 'Internal server error'
     });
   }
 });
+
+
 
 // 记录错误单词
 router.post('/error/:user_id', jwtMiddleware, async (req, res) => {
@@ -657,6 +690,7 @@ router.post('/error/:user_id', jwtMiddleware, async (req, res) => {
   }
 });
 
+
 // 更新练习题字段
 router.post('/update/:id', jwtMiddleware, checkPermission, async (req, res) => {
   try {
@@ -705,6 +739,11 @@ router.post('/update/:id', jwtMiddleware, checkPermission, async (req, res) => {
       err_msg: 'Internal server error'
     });
   }
+});
+
+
+router.get('/analysis_list', (req, res) => {
+  res.render(path.join(__dirname, 'analysis_list.ejs'));
 });
 
 // 更新单词
@@ -758,6 +797,94 @@ router.put('/vocabulary/:id', jwtMiddleware, checkPermission, async (req, res) =
     });
   } catch (error) {
     console.error('Error updating vocabulary:', error);
+    res.status(500).json({
+      err_code: 500,
+      err_msg: 'Internal server error'
+    });
+  }
+});
+
+
+// router.get('/index', (req, res) => {
+//   res.sendFile(path.join(__dirname, 'index.html'));
+// });
+
+
+// 错题分析数据API - 保留 jwtMiddleware
+router.get('/analysis', jwtMiddleware, checkPermission, async (req, res) => {
+  try {
+    const { page = 1, limit = 10, keyword = '' } = req.query;
+    const skip = (page - 1) * parseInt(limit);
+    
+    // 构建查询条件
+    let query = {};
+    
+    if (keyword) {
+      // 查找匹配关键字的用户
+      const users = await User.find({
+        username: { $regex: keyword, $options: 'i' }
+      }).select('_id');
+      
+      const userIds = users.map(user => user._id.toString());
+      
+      // 查找匹配关键字的单词
+      const vocabs = await Vocabulary.find({
+        word: { $regex: keyword, $options: 'i' }
+      }).select('_id');
+      
+      const vocabIds = vocabs.map(vocab => vocab._id.toString());
+      
+      // 组合查询条件
+      query = {
+        $or: [
+          { user_id: { $in: userIds } },
+          { error_word: { $in: vocabIds } }
+        ]
+      };
+    }
+    
+    // 获取总数
+    const total = await Analysis.countDocuments(query);
+    
+    // 获取分析数据
+    const analyses = await Analysis.find(query)
+      .sort({ error_rate: -1 }) // 按错误率降序排列
+      .skip(skip)
+      .limit(parseInt(limit))
+      .exec();
+    
+    // 获取用户和单词信息
+    const result = [];
+    
+    for (const analysis of analyses) {
+      // 获取用户信息
+      const user = await User.findById(analysis.user_id);
+      
+      // 获取单词信息
+      const vocab = await Vocabulary.findById(analysis.error_word);
+      
+      if (user && vocab) {
+        result.push({
+          _id: analysis._id,
+          username: user.username,
+          word: vocab.word,
+          hit_times: analysis.hit_times,
+          error_times: analysis.error_times,
+          error_rate: Math.round(analysis.error_rate * 100) / 100 // 保留两位小数
+        });
+      }
+    }
+    
+    res.json({
+      err_code: 0,
+      err_msg: 'success',
+      data: {
+        total,
+        list: result
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching analysis:', error);
     res.status(500).json({
       err_code: 500,
       err_msg: 'Internal server error'

@@ -37,6 +37,9 @@
               <a href="/vocab_exercise/exercise_list" class="btn btn-info mr-2">
                 <i class="fas fa-list"></i> 练习题
               </a>
+              <a href="/vocab_exercise/analysis_list" class="btn btn-warning mr-2">
+                <i class="fas fa-chart-bar"></i> 错题分析
+              </a>
               <button class="btn btn-success" id="addVocabBtn">
                 <i class="fas fa-plus"></i> 添加单词
               </button>
@@ -373,7 +376,7 @@
         }
         
         $.ajax({
-          url: `/vocab_exercise/${vocabId}`,
+          url: `/vocab_exercise/vocab/${vocabId}`,
           type: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -431,7 +434,7 @@
             }
 
             $.ajax({
-              url: `/vocab_exercise/${vocabId}`,
+              url: `/vocab_exercise/vocab/${vocabId}`,
               type: 'DELETE',
               headers: {
                 'Authorization': `Bearer ${token}`

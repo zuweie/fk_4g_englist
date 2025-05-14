@@ -462,3 +462,22 @@ modules/
 
 ## bug 修改5
 - 请去掉“添加”或“编辑”单词对话框中的关于 file-upload 字段的代码，现在不需要上传文件。并且修改中间件使得 api 能获取 formData 的数据。
+
+## /view/exercise/index.ejs 修改
+- 在页面练习题列表中，练习题若是已经完成状态，练习题标题下面显示的“奖励”字段，其他元素不变。
+- 当用户点击已经完成的练习题列表，首先会弹出对话框“当前练习已完成，是否重新开始?”。
+- 若点击“是”，这调用 POST /vocab_exercise/done/:id 接口，然后进入 /view/practice.ejs 页面。
+- 这里修改 /vocab_exercise/done/:id 接口逻辑，检查 exercise.status 字段状态，若为 done 则改为 ‘unstart’，然后保存，若为 ‘unstart’ 则改为 ‘done’，然后保存，其他不用修改。
+
+## /view/exercise/index.ejs 修改2
+- 在完成的练习题 item 中，把“奖励提示”的字段文字去除，只保留，“奖励”字段的文字。
+
+## modules/vocab_exercise 模块修改：
+- 在 modules/vocab_exercise/index.html 中，在“练习题”按钮旁边添加一个按钮“错题分析”。点击后跳转到 module/vocab_exercise/analysis.ejs 页面。
+- 在 modules/vocab_exercise/ 中添加 analysis_list.ejs 页面, 页面显示以下字段：
+    - 用户名（从user表中name字段获取）
+    - 错误单词（从 vocabulary 表中获取，单词的 word 字段）
+    - 命中次数
+    - 错误次数
+    - 错误率
+- 此页面按照错误率从高到低排列。

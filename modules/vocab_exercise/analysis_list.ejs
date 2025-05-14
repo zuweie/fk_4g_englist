@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>错题分析</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.1/dist/css/adminlte.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css">
+</head>
+<body class="hold-transition">
+  <div class="content-wrapper">
+    <section class="content-header">
+      <div class="container-fluid">
+        <div class="row mb-2">
+          <div class="col-sm-6">
+            <h1>错题分析</h1>
+          </div>
+          <div class="col-sm-6">
+            <ol class="breadcrumb float-sm-right">
+              <li class="breadcrumb-item"><a href="/vocab_exercise">单词列表</a></li>
+              <li class="breadcrumb-item active">错题分析</li>
+              <li class="breadcrumb-item" id="loginStatus">
+                <a href="/user/login" id="loginLink">登录</a>
+                <a href="#" id="logoutLink" style="display:none;">退出</a>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="content">
+      <div class="card">
+        <div class="card-header">
+          <div class="row">
+            <div class="col-md-8">
+              <div class="input-group">
+                <input type="text" class="form-control" id="searchInput" placeholder="搜索用户或单词...">
+                <div class="input-group-append">
+                  <button class="btn btn-primary" id="searchBtn">搜索</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <table class="table table-bordered table-striped">
+            <thead>
+              <tr>
+                <th>用户名</th>
+                <th>错误单词</th>
+                <th>命中次数</th>
+                <th>错误次数</th>
+                <th>错误率</th>
+              </tr>
+            </thead>
+            <tbody id="analysisList">
+              <!-- 错题分析列表将通过 JavaScript 动态加载 -->
+            </tbody>
+          </table>
+          <div class="mt-3" id="pagination"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.1/dist/js/adminlte.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
+  
+  <script>
+    $(document).ready(function() {
+      let currentPage = 1;
+      let totalPages = 1;
+      let keyword = '';
+
+      // 获取 token 函数
+      function getToken() {
+        // 首先尝试从 cookie 获取
+        let token = document.cookie.replace(/(?:(?:^|.*;\s*)token\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+        
+        // 如果 cookie 中没有，尝试从 localStorage 获取
+        if (!token) {
+          token = localStorage.getItem('token');
+        }
+        
+        return token;
+      }
+
+      // 加载错题分析列表
+      function loadAnalysisList(page = 1, keyword = '') {
+        const token = getToken();
+        
+        // 如果没有 token，显示登录提示
+        if (!token) {
+          $('#analysisList').html('<tr><td colspan="5" class="text-center">请先登录</td></tr>');
+          $('#pagination').html('');
+          
+          // 显示登录提示
+          Swal.fire({
+            title: '需要登录',
+            text: '请先登录以查看错题分析',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: '去登录',
+            cancelButtonText: '取消'
+          }).then((result) => {
+            if (result.isConfirmed) {
+              window.location.href = '/user/login';
+            }
+          });
+          
+          return;
+        }
+        
+        currentPage = page;
+        
+        $.ajax({
+          url: `/vocab_exercise/analysis?page=${page}&limit=10&keyword=${keyword}`,
+          type: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          success: function(response) {
+            if (response.err_code === 0) {
+              const analyses = response.data.list;
+              const total = response.data.total;
+              totalPages = Math.ceil(total / 10);
+              
+              let html = '';
+              
+              if (analyses.length === 0) {
+                html = '<tr><td colspan="5" class="text-center">暂无数据</td></tr>';
+              } else {
+                analyses.forEach(function(analysis) {
+                  html += `
+                    <tr>
+                      <td>${analysis.username}</td>
+                      <td>${analysis.word}</td>
+                      <td>${analysis.hit_times}</td>
+                      <td>${analysis.error_times}</td>
+                      <td>${analysis.error_rate}%</td>
+                    </tr>
+                  `;
+                });
+              }
+              
+              $('#analysisList').html(html);
+              
+              // 生成分页
+              let paginationHtml = '';
+              if (totalPages > 1) {
+                paginationHtml = '<ul class="pagination justify-content-center">';
+                
+                // 上一页
+                if (currentPage > 1) {
+                  paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${currentPage - 1}">上一页</a></li>`;
+                } else {
+                  paginationHtml += '<li class="page-item disabled"><a class="page-link" href="#">上一页</a></li>';
+                }
+                
+                // 页码
+                const startPage = Math.max(1, currentPage - 2);
+                const endPage = Math.min(totalPages, startPage + 4);
+                
+                for (let i = startPage; i <= endPage; i++) {
+                  if (i === currentPage) {
+                    paginationHtml += `<li class="page-item active"><a class="page-link" href="#">${i}</a></li>`;
+                  } else {
+                    paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+                  }
+                }
+                
+                // 下一页
+                if (currentPage < totalPages) {
+                  paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${currentPage + 1}">下一页</a></li>`;
+                } else {
+                  paginationHtml += '<li class="page-item disabled"><a class="page-link" href="#">下一页</a></li>';
+                }
+                
+                paginationHtml += '</ul>';
+              }
+              
+              $('#pagination').html(paginationHtml);
+            } else {
+              Swal.fire('错误', response.err_msg, 'error');
+            }
+          },
+          error: function(xhr) {
+            if (xhr.status === 401) {
+              Swal.fire('错误', '未授权，请确保您有足够的权限', 'error');
+            } else {
+              Swal.fire('错误', '加载错题分析失败', 'error');
+            }
+          }
+        });
+      }
+
+      // 搜索按钮点击事件
+      $('#searchBtn').click(function() {
+        keyword = $('#searchInput').val().trim();
+        loadAnalysisList(1, keyword);
+      });
+
+      // 回车键搜索
+      $('#searchInput').keypress(function(e) {
+        if (e.which === 13) {
+          $('#searchBtn').click();
+        }
+      });
+
+      // 分页点击事件
+      $(document).on('click', '.pagination .page-link', function(e) {
+        e.preventDefault();
+        const page = $(this).data('page');
+        if (page) {
+          loadAnalysisList(page, keyword);
+        }
+      });
+
+      // 检查登录状态
+      function checkLoginStatus() {
+        const token = getToken();
+        if (token) {
+          $('#loginLink').hide();
+          $('#logoutLink').show();
+        } else {
+          $('#loginLink').show();
+          $('#logoutLink').hide();
+        }
+      }
+      
+      // 退出登录
+      $('#logoutLink').click(function(e) {
+        e.preventDefault();
+        document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        localStorage.removeItem('token');
+        checkLoginStatus();
+        loadAnalysisList();
+      });
+      
+      // 初始检查登录状态
+      checkLoginStatus();
+
+      // 初始加载
+      loadAnalysisList();
+    });
+  </script>
+</body>
+</html> 

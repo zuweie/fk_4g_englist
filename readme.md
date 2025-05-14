@@ -206,7 +206,7 @@ Authorization: Bearer <token>
 - permission = 3: 管理员
 
 3. **Token 存储**:
-- 存储位置: Cookie
+- 存储位置: Cookie，存储方式，在页面端 api 请求后得到token，在页面端保存 token 到 cookie 中。不要在response 中设置 token 到 cookie。
 - Cookie 名称: token
 - Cookie 路径: /
 - 获取方式: document.cookie
@@ -362,6 +362,11 @@ Authorization: Bearer <token>
 4. **响应式布局问题**:
    - 使用 Bootstrap 的栅格系统 (`row` 和 `col-*` 类)
    - 为不同屏幕尺寸设置适当的列宽
+
+5. **请求的数据格式问题**
+  - 所有带有 body 的请求，例如 post，put 等提交的数据格式必须问 application/json，所有请求的数据统一打包成json。
+  - 若如上请求中需要上传文件的情况，不大与 10M 的情况，在页面端将文件转成 base64 编码，然后打包成json。
+  - 若上传的文件大于 10M，在页面端调用 /upload api 上传文件，返回 url，再跟其他数据一起打包成 json 提交。
 
 通过遵循这些指南，可以确保新模块页面在后台框架中正确显示，保持与现有模块的一致性。
 
