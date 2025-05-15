@@ -481,3 +481,10 @@ modules/
     - 错误次数
     - 错误率
 - 此页面按照错误率从高到低排列。
+
+## /view/exercise/practice.ejs 修改,单用户提交答案后。修改逻辑如下：
+- 调用 POST /vocab_exercise/error/:user_id 接口，除了原来传入用户 _id （user_id），错误单词的 _id 数组 （vocab_ids）, 还传入全部单词的 _id 数组 （all_vocab_ids）。
+- 修改 POST /vocab_exercise/error/:user_id 接口逻辑，跟据 user_id 和 all_vocab_ids 从 analysis 表中获取 analysis 对象，若不存在则新建一个对象。
+- 将该 analysis 对象的 hit_times 字段 + 1， 然后从提交错误单词数组（vocab_ids）中，检查是否存在匹配该 analysis 对象的 error_word 字段，若存在则将 error_times + 1。然后保存记录。
+- 当用户提交答案后，保留答错的的单词卡，单词卡的颜色变回白色，即开始答题的哪一种也是风格。
+- 当用户点击查看某个单词答案时，将该单词的 _id 存入错误单词数组中。认为该单词已经答错。

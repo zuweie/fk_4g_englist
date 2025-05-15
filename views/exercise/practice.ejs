@@ -242,11 +242,33 @@
       // 存储所有BlankCanvas实例的引用
       const blankCanvases = {};
       
+      // 错误单词数组
+      const errorWordIds = [];
+      
+      // 获取所有单词卡片
+      // const wordCards = document.querySelectorAll('.word-card');
+      
+      // // 遍历每个单词卡片
+      // wordCards.forEach(function(wordCard) {
+      //   const wordIndex = wordCard.id.split('-')[1];
+        
+      //   // 获取该单词卡片中的所有空格
+      //   const blanks = wordCard.querySelectorAll('.blank-letter');
+        
+      //   // 为每个空格创建 BlankCanvas 实例
+      //   blanks.forEach(function(blank) {
+      //     const blankId = blank.id;
+      //     const blankCanvas = new BlankCanvas(blankId, model);
+          
+      //     // 存储BlankCanvas实例以便后续使用
+      //     blankCanvases[blankId] = blankCanvas;
+          
+      //     console.log(`初始化空格: ${blankId}`);
+      //   });
+      // });
+      
       // 橡皮擦模式标志
       let eraserMode = false;
-      
-      // 错误单词数组
-      let errorWordIds = [];
       
       // 获取所有单词卡片
       const wordCards = document.querySelectorAll('.word-card');
@@ -310,126 +332,128 @@
       
       // 添加提交按钮点击事件
       $('#submitBtn').click(function() {
-        // 检查所有空格是否都已填写
-        const emptyBlanks = $('.blank-letter').filter(function() {
-          return $(this).text() === '';
-        });
-        
-        if (emptyBlanks.length > 0) {
-          Swal.fire({
-            title: '提示',
-            text: '请填写所有空格后再提交',
-            icon: 'warning'
-          });
-          return;
-        }
-        
-        // 检查所有单词是否正确
-        let allCorrect = true;
+        // 获取所有单词卡
+        const wordCards = document.querySelectorAll('.word-card');
+        const errorWordIds = [];
+        const allWordIds = [];
         let correctCount = 0;
-        let incorrectCount = 0;
-        errorWordIds = []; // 清空错误单词数组
         
-        // 遍历所有单词卡片
-        $('.word-card').each(function() {
-          const wordCard = $(this);
-          const wordId = wordCard.data('id');
-          let wordCorrect = true;
+        // 检查每个单词卡
+        wordCards.forEach(function(wordCard) {
+          const wordId = wordCard.dataset.id;
+          allWordIds.push(wordId);
           
-          // 检查该单词卡片中的所有空格
-          wordCard.find('.blank-letter').each(function() {
-            const userInput = $(this).text().toLowerCase();
-            const correctLetter = $(this).data('correct').toLowerCase();
+          const correctWord = wordCard.dataset.word;
+          const blanks = wordCard.querySelectorAll('.blank-letter');
+          let isCorrect = true;
+          
+          // 检查每个空格
+          blanks.forEach(function(blank) {
+            const prediction = blank.getAttribute('data-prediction');
+            const index = parseInt(blank.id.split('_')[2]);
             
-            if (userInput !== correctLetter) {
-              wordCorrect = false;
-              allCorrect = false;
+            if (!prediction || prediction.toLowerCase() !== correctWord[index].toLowerCase()) {
+              isCorrect = false;
             }
           });
           
-          // 根据结果设置单词卡片样式
-          if (wordCorrect) {
-            wordCard.addClass('correct').removeClass('incorrect');
+          // 根据正确性设置样式
+          if (isCorrect) {
+            wordCard.classList.add('correct');
             correctCount++;
           } else {
-            wordCard.addClass('incorrect').removeClass('correct');
-            incorrectCount++;
+            wordCard.classList.add('incorrect');
             errorWordIds.push(wordId);
           }
         });
         
-        // 根据结果显示不同的对话框
-        if (allCorrect) {
+        // 判断是否全部正确
+        if (errorWordIds.length === 0) {
+          // 全部正确
           Swal.fire({
-            title: '恭喜你，全对！',
-            text: '奖励：<%= exercise.award %>',
+            title: '恭喜你，全对!',
+            text: `奖励：<%=exercise.award%>`,
             icon: 'success',
             confirmButtonText: '确定'
           }).then((result) => {
             if (result.isConfirmed) {
-              // 调用完成练习接口
+              // 调用完成接口
               $.ajax({
-                url: '/vocab_exercise/done/<%= exercise._id %>',
+                url: `/vocab_exercise/done/<%=exercise._id%>`,
                 type: 'POST',
                 headers: {
-                  'Authorization': `Bearer ${getCookie('token')}`
+                  'Authorization': `Bearer ${getToken()}`
                 },
                 success: function(response) {
                   if (response.err_code === 0) {
-                    // 返回练习题列表页面
                     window.location.href = '/exercise/index';
                   } else {
                     Swal.fire('错误', response.err_msg, 'error');
                   }
                 },
                 error: function() {
-                  Swal.fire('错误', '标记练习完成失败', 'error');
+                  Swal.fire('错误', '操作失败，请稍后重试', 'error');
                 }
               });
             }
           });
         } else {
+          // 有错误
           Swal.fire({
-            title: '继续努力！',
-            text: `答对${correctCount}个，答错${incorrectCount}个`,
+            title: '继续努力!',
+            text: `答对${correctCount}个，答错${errorWordIds.length}个，请继续努力！`,
             icon: 'info',
-            confirmButtonText: '继续练习'
+            confirmButtonText: '确定'
           }).then((result) => {
             if (result.isConfirmed) {
-              // 调用记录错误单词接口
+              // 调用错误记录接口
               $.ajax({
-                url: '/vocab_exercise/error/<%= user._id %>',
+                url: `/vocab_exercise/error/<%=user._id%>`,
                 type: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${getCookie('token')}`
-                },
                 contentType: 'application/json',
-                data: JSON.stringify({ vocab_ids: errorWordIds }),
+                data: JSON.stringify({
+                  vocab_ids: errorWordIds,
+                  all_vocab_ids: allWordIds
+                }),
+                headers: {
+                  'Authorization': `Bearer ${getToken()}`
+                },
                 success: function(response) {
                   if (response.err_code === 0) {
-                    // 移除正确的单词卡片
-                    $('.word-card.correct').fadeOut(500, function() {
-                      $(this).remove();
-                    });
-                    
-                    // 清空错误单词卡片中的空格
-                    $('.word-card.incorrect').each(function() {
-                      $(this).find('.blank-letter').each(function() {
-                        const blankId = $(this).attr('id');
-                        // 移除预测结果
-                        $(this).removeAttr('data-prediction');
-                        $(this).text('');
+                    // 移除正确的单词卡
+                    wordCards.forEach(function(wordCard) {
+                      const wordId = wordCard.dataset.id;
+                      if (!errorWordIds.includes(wordId)) {
+                        wordCard.remove();
+                      } else {
+                        // 恢复错误单词卡的样式
+                        wordCard.classList.remove('incorrect');
                         
-                        // 重新创建BlankCanvas实例
-                        blankCanvases[blankId] = new BlankCanvas(blankId, model);
-                      });
+                        // 清空所有空格
+                        const blanks = wordCard.querySelectorAll('.blank-letter');
+                        blanks.forEach(function(blank) {
+                          // 清除预测结果
+                          blank.removeAttribute('data-prediction');
+                          blank.textContent = '';
+                          
+                          // 重新初始化 BlankCanvas
+                          const blankId = blank.id;
+                          if (blankCanvases[blankId]) {
+                            // 如果已经存在，先清除
+                            delete blankCanvases[blankId];
+                          }
+                          
+                          // 创建新的 BlankCanvas
+                          blankCanvases[blankId] = new BlankCanvas(blankId, model);
+                        });
+                      }
                     });
                   } else {
                     Swal.fire('错误', response.err_msg, 'error');
                   }
                 },
                 error: function() {
-                  Swal.fire('错误', '记录错误单词失败', 'error');
+                  Swal.fire('错误', '操作失败，请稍后重试', 'error');
                 }
               });
             }
@@ -518,6 +542,9 @@
         }
       });
       
+      function getToken() {
+        return document.cookie.replace(/(?:(?:^|.*;\s*)token\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+      }
       // 获取cookie函数
       function getCookie(name) {
         const value = `; ${document.cookie}`;

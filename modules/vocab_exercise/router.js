@@ -28,10 +28,6 @@ const checkPermission = (req, res, next) => {
   next();
 };
 
-router.use((req, res, next) => {
-  console.log(`Request path: ${req.path}`);
-  next();
-});
 
 // 单词库首页
 router.get('/index', (req, res) => {
@@ -639,7 +635,7 @@ router.post('/done/:id', jwtMiddleware, async (req, res) => {
 router.post('/error/:user_id', jwtMiddleware, async (req, res) => {
   try {
     const { user_id } = req.params;
-    const { vocab_ids } = req.body;
+    const { vocab_ids, all_vocab_ids } = req.body;
     
     // 验证用户ID
     if (user_id !== req.auth._id) {
@@ -649,8 +645,8 @@ router.post('/error/:user_id', jwtMiddleware, async (req, res) => {
       });
     }
     
-    // 处理每个错误单词
-    for (const vocab_id of vocab_ids) {
+    // 处理所有单词
+    for (const vocab_id of all_vocab_ids) {
       // 查找分析记录
       let analysis = await Analysis.findOne({ 
         user_id: user_id,
@@ -663,16 +659,22 @@ router.post('/error/:user_id', jwtMiddleware, async (req, res) => {
           user_id: user_id,
           error_word: vocab_id,
           hit_times: 1,
-          error_times: 1,
-          error_rate: 100
+          error_times: 0,
+          error_rate: 0
         });
       } else {
-        // 更新现有记录
-        analysis.error_times += 1;
+        // 增加命中次数
         analysis.hit_times += 1;
-        analysis.error_rate = Math.round((analysis.error_times / analysis.hit_times) * 100);
-        analysis.updated_at = new Date();
       }
+      
+      // 检查是否在错误单词列表中
+      if (vocab_ids.includes(vocab_id)) {
+        analysis.error_times += 1;
+      }
+      
+      // 计算错误率
+      analysis.error_rate = Math.round((analysis.error_times / analysis.hit_times) * 100);
+      analysis.updated_at = new Date();
       
       await analysis.save();
     }
