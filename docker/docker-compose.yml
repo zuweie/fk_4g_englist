@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: 1234
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./mongo/db:/data/db
+    restart: unless-stopped 
+  nginx:
+    image: bitnami/nginx:latest
+    container_name: nginx
+    user: "1000:1000"
+    ports:
+      - "80:8000"
+    volumes:
+      - ./nginx/4ge.conf:/opt/bitnami/nginx/conf/server_blocks/4ge.conf
+      - ./nginx/tmp:/opt/bitnami/nginx/tmp
+      - ./nginx/logs:/opt/bitnami/nginx/logs
+
+

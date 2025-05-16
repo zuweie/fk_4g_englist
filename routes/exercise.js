@@ -155,7 +155,6 @@ router.get('/practice', async (req, res) => {
       words: words,
       user: decoded
     });
-    console.log("user", decoded)
   } catch (error) {
     console.error('Error loading practice:', error);
     res.redirect('/exercise/login');
