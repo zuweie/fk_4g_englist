@@ -14,13 +14,13 @@ RUN npm install --production
 # 复制项目文件
 COPY . .
 
-COPY entrypoint.sh .
+# COPY entrypoint.sh .
 
-RUN chomd +x entrypoint.sh
+# RUN chomd +x entrypoint.sh
 
 EXPOSE 3000
 
-ENTRYPOINT [ "./entrypoint.sh" ]
+# ENTRYPOINT [ "./entrypoint.sh" ]
 
 # 启动应用
-#CMD ["node", "app.js"]
+CMD ["node", "app.js"]
