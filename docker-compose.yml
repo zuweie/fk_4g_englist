@@ -5,6 +5,7 @@ services:
     build: 
       context: .
       dockerfile: Dockerfile
+    image: 4ge-app
     container_name: 4ge-app
     user: "1000:1000"
     ports:
@@ -12,6 +13,8 @@ services:
     restart: unless-stopped
     depends_on:
       - mongodb
+    networks:
+      - 4ge-network
   mongodb:
     image: mongo:latest
     container_name: mongodb
@@ -24,6 +27,8 @@ services:
     volumes:
       - ./docker/mongo/db:/data/db
     restart: unless-stopped 
+    networks:
+      - 4ge-network
   nginx:
     image: bitnami/nginx:latest
     container_name: nginx
@@ -34,5 +39,12 @@ services:
       - ./docker/nginx/4ge.conf:/opt/bitnami/nginx/conf/server_blocks/4ge.conf
       - ./docker/nginx/tmp:/opt/bitnami/nginx/tmp
       - ./docker/nginx/logs:/opt/bitnami/nginx/logs
+    depends_on:
+      - 4ge-app
+    networks:
+      - 4ge-network
+networks:
+  4ge-network:
+    driver: bridge
 
 
