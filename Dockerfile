@@ -8,10 +8,19 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 
 # 安装依赖
-RUN npm install --production && npm run init
+# RUN npm install --production && npm run init
+RUN npm install --production
 
 # 复制项目文件
 COPY . .
 
+COPY entrypoint.sh .
+
+RUN chomd +x entrypoint.sh
+
+EXPOSE 3000
+
+ENTRYPOINT [ "./entrypoint.sh" ]
+
 # 启动应用
-CMD ["node", "app.js"]
+#CMD ["node", "app.js"]
