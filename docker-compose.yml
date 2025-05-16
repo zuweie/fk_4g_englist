@@ -5,6 +5,8 @@ services:
     build: 
       context: .
       dockerfile: Dockerfile
+    volumes:
+      - ./:/usr/src/app
     image: 4ge-app
     container_name: 4ge-app
     user: "1000:1000"
