@@ -22,7 +22,7 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      - ./mongo/db:/data/db
+      - ./docker/mongo/db:/data/db
     restart: unless-stopped 
   nginx:
     image: bitnami/nginx:latest
@@ -31,8 +31,8 @@ services:
     ports:
       - "80:8000"
     volumes:
-      - ./nginx/4ge.conf:/opt/bitnami/nginx/conf/server_blocks/4ge.conf
-      - ./nginx/tmp:/opt/bitnami/nginx/tmp
-      - ./nginx/logs:/opt/bitnami/nginx/logs
+      - ./docker/nginx/4ge.conf:/opt/bitnami/nginx/conf/server_blocks/4ge.conf
+      - ./docker/nginx/tmp:/opt/bitnami/nginx/tmp
+      - ./docker/nginx/logs:/opt/bitnami/nginx/logs
 
 
