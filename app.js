@@ -27,6 +27,8 @@ app.set('views', path.join(__dirname, 'views'));
 
 // 静态文件服务
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/rs', express.static(path.join(__dirname, 'rs')));
+app.use('/webfonts', express.static(path.join(__dirname, 'rs/webfonts')))
 
 // 数据库连接
 mongoose.connect(process.env.MONGODB_URI.replace('?', `/${process.env.WEB_NAME}?`), {
