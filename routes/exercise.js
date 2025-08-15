@@ -2,8 +2,12 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const jwt = require('jsonwebtoken');
+const fs = require('fs');
+const crypto = require('crypto');
+const axios = require('axios');
 const User = require('../modules/user/db');
-const { Exercise } = require('../modules/vocab_exercise/db');
+const { Exercise, Vocabulary } = require('../modules/vocab_exercise/db');
+const { randomUUID } = require('crypto');
 
 
 // 提供model的静态文件
@@ -139,7 +143,6 @@ router.get('/practice', async (req, res) => {
     }
     
     // 获取练习题中的单词详情
-    const { Vocabulary } = require('../modules/vocab_exercise/db');
     const wordIds = exercise.words || [];
     const words = [];
     
@@ -150,7 +153,7 @@ router.get('/practice', async (req, res) => {
       }
     }
     
-    res.render('exercise/practice', { 
+    res.render('exercise/practice2', { 
       exercise: exercise,
       words: words,
       user: decoded
@@ -160,5 +163,107 @@ router.get('/practice', async (req, res) => {
     res.redirect('/exercise/login');
   }
 });
+
+/**
+ * 上传单词 ID， 获取单词
+ */
+router.get('/playsample', async(req,res)=>{
+  const { id } = req.query;
+  const vocab = await Vocabulary.findById(id);
+  if (!vocab) {
+    return res.status(404).json({
+      err_code: 404,
+      err_msg: '单词不存在'
+    });
+  }
+
+  let word  = vocab.word;
+  //let word = "what the hell is goning on mp3 is not working";
+  // 去掉 word 中的空格
+  let wordMp3 = word.replace(/\s+/g, '');
+  // 查看 public/uploads 路径中是否存在 word.mp3
+  const filePath = path.join(__dirname, '../public/uploads', `${wordMp3}.mp3`);
+  if (fs.existsSync(filePath)) {
+    // 以流媒体形式返回该 mp3 文件
+    console.log(`${wordMp3}.mp3 存在.`);
+    const stat = fs.statSync(filePath);
+    const fileStream = fs.createReadStream(filePath);
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Content-Length', stat.size);
+    fileStream.pipe(res);
+  } else {
+    console.log(`${wordMp3}.mp3 不存在.`);
+    
+    // TODO： 从有道云 api 中获取该单词发音的语音合成 mp3 文件
+    const url = "https://openapi.youdao.com/ttsapi";
+
+    const appid = process.env.YOUDAO_TTS_APPID;
+    const secret = process.env.YOUDAO_TTS_SECRET;
+    const salt = randomUUID();
+    const curtime = Math.floor(Date.now() / 1000);
+    const signType = "v3"
+    let q = word;
+    if (word.length > 20) {
+      // q = word 前 10 个字符 + word.lenght + word 后 10 个字符
+      q = word.substring(0, 10) + word.length + word.substring(word.length-10, word.length);
+    }
+    let signString = appid + q + salt + curtime + secret;
+    // signString 进行 utf8 编码
+    signString = Buffer.from(signString).toString('utf8');
+    
+    const sign = crypto.createHash('sha256').update(signString).digest('hex');
+
+    const params = {
+      appKey: appid,
+      // 将word url encode 赋值给 q
+      q: word,
+      salt: salt,
+      curtime: curtime,
+      sign: sign,
+      signType: signType,
+      format: 'mp3',
+      voiceName: 'youxiaomei'
+    }
+    
+    try {
+      // 以 post application/x-www-form-urlencoded 的形式提交请求
+      const response = await axios.post(url, params, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        responseType: 'arraybuffer'
+      });
+      
+      // 分析 response 的头部的 content-typ 是否为 audio
+      const contentType = response.headers['content-type'];
+
+      if (contentType.includes('audio')) {
+        // 将 response 的 content 写入到 public/uploads 路径中
+        const filePath = path.join(__dirname, '../public/uploads', `${wordMp3}.mp3`);
+        // 将 response 中 mp3 的数据写入文件中
+        fs.writeFileSync(filePath, response.data);
+
+        // 以流媒体形式返回该 mp3 文件
+        console.log(`${wordMp3}.mp3 下载完毕.`);
+        const stat = fs.statSync(filePath);
+        const fileStream = fs.createReadStream(filePath);
+        res.setHeader('Content-Type', 'audio/mpeg');
+        res.setHeader('Content-Length', stat.size);
+        fileStream.pipe(res);
+      } else {
+        return res.status(404).json({
+          err_code: 404,
+          err_msg: 'mp3 文件不存在'
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching TTS:', error);
+      return res.status(500).json({
+        err_code: 500,
+        err_msg: '语音合成失败'
+      });
+    }
+  }
+})
 
 module.exports = router; 

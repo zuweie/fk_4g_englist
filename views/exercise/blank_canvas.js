@@ -82,10 +82,23 @@ class BlankCanvas {
                     const parent = document.getElementById(this.parentId);
                     parent.setAttribute('data-prediction', prediction);
                     // prediction 转成小写
-                    parent.textContent = prediction.toLowerCase();
+                    // 将9转成q，0转成o，1转成i
+                    if (prediction == '9') {
+                        prediction = 'q';
+                    } else if (prediction == '0') {
+                        prediction = 'o';
+                    } else if (prediction == '1') {
+                        prediction = 'i';
+                    } else if (prediction == '5') {
+                        prediction = 's';
+                    }
                     
+                    parent.textContent = prediction.toLowerCase();
                     // 记录该空格已被识别
                     this.isRecognized = true;
+                } else {
+                    const parent = document.getElementById(this.parentId);
+                    parent.textContent = '?';
                 }
             }, 1000);
         });

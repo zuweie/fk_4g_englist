@@ -1,52 +1,14 @@
 version: '3.8'
 
 services:
-  4ge-app:
-    build: 
-      context: .
-      dockerfile: Dockerfile
-    volumes:
-      - ./:/usr/src/app
-    image: 4ge-app
-    container_name: 4ge-app
-    user: "1000:1000"
-    ports:
-      - "3000:3000"
-    restart: unless-stopped
-    depends_on:
-      - mongodb
-    networks:
-      - 4ge-network
   mongodb:
     image: mongo:latest
     container_name: mongodb
-    user: "1000:1000"
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: 1234
     ports:
       - "27017:27017"
     volumes:
-      - ./docker/mongo/db:/data/db
+      - ./docker/mongodb:/data/db
     restart: unless-stopped 
-    networks:
-      - 4ge-network
-  nginx:
-    image: bitnami/nginx:latest
-    container_name: nginx
-    user: "1000:1000"
-    ports:
-      - "80:8000"
-    volumes:
-      - ./docker/nginx/4ge.conf:/opt/bitnami/nginx/conf/server_blocks/4ge.conf
-      - ./docker/nginx/tmp:/opt/bitnami/nginx/tmp
-      - ./docker/nginx/logs:/opt/bitnami/nginx/logs
-    depends_on:
-      - 4ge-app
-    networks:
-      - 4ge-network
-networks:
-  4ge-network:
-    driver: bridge
-
-

@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= exercise.name %> - 小学英语单词练习</title>
+  <link rel="stylesheet" href="/rs/bootstrap.min.css">
+  <link rel="stylesheet" href="/rs/all.min.css">
+  <style>
+    body {
+      background-color: #f8f9fa;
+      padding: 20px 0;
+      position: relative;
+    }
+    .practice-container {
+      width: calc(100% - 20px);
+      margin: 0 auto;
+      background-color: #fff;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      padding: 30px;
+    }
+    .practice-title {
+      margin-bottom: 20px;
+      color: #333;
+    }
+    .practice-tips {
+      background-color: #f8f9fa;
+      border-left: 4px solid #6c757d;
+      padding: 15px;
+      margin-bottom: 30px;
+      color: #495057;
+    }
+    .word-card {
+      width: 100%;
+      margin: 0 auto 30px;
+      border-radius: 10px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+      padding: 20px;
+      background-color: white;
+      transition: background-color 0.3s;
+    }
+    .word-card.correct {
+      background-color: #d4edda;
+      border-color: #c3e6cb;
+    }
+    .word-card.incorrect {
+      background-color: #f8d7da;
+      border-color: #f5c6cb;
+    }
+    .word-meaning {
+      font-size: 18px;
+      margin-bottom: 15px;
+      color: #333;
+      text-align: left;
+    }
+    .divider {
+      width: 100%;
+      height: 1px;
+      background-color: #dee2e6;
+      margin: 15px auto;
+    }
+    .word-container {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+    .letter {
+      font-size: 32px;
+      margin: 0;
+      font-weight: bold;
+      color: #333;
+    }
+    .space {
+      width: 16px;
+      height: 32px;
+      margin: 0 2px;
+    }
+    .blank-container {
+      width: 60px;
+      height: 80px;
+      border: 2px dashed #6c757d;
+      border-radius: 8px;
+      margin: 0 2px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: white;
+      position: relative;
+      cursor: pointer;
+      transition: border-color 0.3s;
+    }
+    .blank-container.highlighted {
+      border: 4px dashed #007bff;
+    }
+    .blank-letter {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 32px;
+      font-weight: bold;
+      color: #007bff;
+      position: relative;
+      z-index: 2;
+    }
+    .candidate-letters {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 20px 0;
+      padding: 15px;
+      background-color: #f8f9fa;
+      border-radius: 8px;
+    }
+    .candidate-letter {
+      width: 50px;
+      height: 50px;
+      border: 2px solid #28a745;
+      border-radius: 8px;
+      background-color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 24px;
+      font-weight: bold;
+      color: #28a745;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .candidate-letter:hover {
+      background-color: #28a745;
+      color: white;
+    }
+    .candidate-letter.used {
+      opacity: 0.3;
+      pointer-events: none;
+    }
+    .submit-btn {
+      display: block;
+      margin: 30px auto;
+      padding: 10px 40px;
+      font-size: 18px;
+    }
+    .word-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 10px;
+      gap: 10px;
+    }
+    .peek-btn, .play-btn {
+      background: none;
+      border: none;
+      color: #6c757d;
+      cursor: pointer;
+      padding: 5px;
+      border-radius: 4px;
+      transition: all 0.3s;
+    }
+    .peek-btn:hover, .play-btn:hover {
+      background-color: #f8f9fa;
+      color: #007bff;
+    }
+    .play-btn.playing {
+      color: #28a745;
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    .word-reveal {
+      display: none;
+      margin-top: 10px;
+      font-size: 24px;
+    }
+    .word-reveal .gap-letter {
+      color: #007bff;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="practice-container">
+    <h1 class="practice-title"><%= exercise.name %></h1>
+    <div class="practice-tips">
+      <%= exercise.award_tips %>
+    </div>
+    
+    <div id="wordCards">
+      <% words.forEach(function(word, wordIndex) { %>
+        <div class="word-card" id="word-<%= wordIndex %>" data-id="<%= word._id %>" data-word="<%= word.word %>">
+          <div class="word-actions">
+            <button class="peek-btn" data-word-index="<%= wordIndex %>">
+              <i class="fas fa-eye-slash"></i>
+            </button>
+            <button class="play-btn" data-word-id="<%= word._id %>" title="播放发音">
+              <i class="fas fa-volume-up"></i>
+            </button>
+          </div>
+          <div class="word-meaning"><%= word.meaning %></div>
+          <div class="divider"></div>
+          <div class="word-container">
+            <% 
+              let letterIndex = 0;
+              for (let i = 0; i < word.word.length; i++) {
+                const char = word.word[i];
+                if (char === ' ') { 
+            %>
+              <div class="space"></div>
+            <% } else if (word.gap.includes(i)) { %>
+              <div class="blank-container" data-index="<%= i %>" data-correct="<%= char.toLowerCase() %>">
+                <div class="blank-letter" id="blank_<%= wordIndex %>_<%= i %>"></div>
+              </div>
+            <% } else { %>
+              <div class="letter"><%= char %></div>
+            <% }
+              letterIndex++;
+            } %>
+          </div>
+          <div class="divider"></div>
+          <div class="candidate-letters" id="candidates-<%= wordIndex %>">
+            <!-- Candidate letters will be generated by JavaScript -->
+          </div>
+          <div class="word-reveal" id="reveal-<%= wordIndex %>">
+            <% 
+              for (let i = 0; i < word.word.length; i++) {
+                const char = word.word[i];
+                if (char === ' ') { 
+            %>
+              &nbsp;
+            <% } else if (word.gap.includes(i)) { %>
+              <span class="gap-letter"><%= char %></span>
+            <% } else { %>
+              <%= char %>
+            <% }
+              } 
+            %>
+          </div>
+        </div>
+      <% }); %>
+    </div>
+    
+    <button class="btn btn-primary submit-btn" id="submitBtn">提交</button>
+  </div>
+
+  <script src="/rs/jquery-3.6.0.min.js"></script>
+  <script src="/rs/bootstrap.bundle.min.js"></script>
+  <script src="/rs/sweetalert2.all.min.js"></script>
+  <script>
+    $(document).ready(function() {
+      // 错误单词数组
+      const errorWordIds = [];
+      
+      // 为每个单词卡片生成候选字母
+      $('.word-card').each(function() {
+        const wordCard = $(this);
+        const word = wordCard.data('word');
+        const wordIndex = wordCard.attr('id').split('-')[1];
+        const gapIndices = [];
+        
+        // 获取需要填写的字母位置
+        wordCard.find('.blank-container').each(function() {
+          gapIndices.push(parseInt($(this).data('index')));
+        });
+        
+        // 生成候选字母
+        const candidateLetters = generateCandidateLetters(word, gapIndices);
+        const candidatesContainer = wordCard.find(`#candidates-${wordIndex}`);
+        
+        // 渲染候选字母
+        candidateLetters.forEach(letter => {
+          const letterDiv = $(`<div class="candidate-letter" data-letter="${letter}">${letter}</div>`);
+          candidatesContainer.append(letterDiv);
+        });
+        
+        // 为候选字母添加点击事件
+        candidatesContainer.find('.candidate-letter').click(function() {
+          const letter = $(this).data('letter');
+          const highlightedBlank = wordCard.find('.blank-container.highlighted');
+          
+          if (highlightedBlank.length > 0) {
+            // 如果空格已经有字母，先还原到候选区
+            const existingLetter = highlightedBlank.find('.blank-letter').text();
+            if (existingLetter) {
+              const existingCandidate = candidatesContainer.find(`[data-letter="${existingLetter}"]`);
+              if (existingCandidate.length === 0) {
+                // 重新创建候选字母
+                const newCandidate = $(`<div class="candidate-letter" data-letter="${existingLetter}">${existingLetter}</div>`);
+                candidatesContainer.append(newCandidate);
+                newCandidate.click(function() {
+                  handleCandidateClick($(this), wordCard);
+                });
+              } else {
+                existingCandidate.removeClass('used');
+              }
+            }
+            
+            // 放置新字母
+            highlightedBlank.find('.blank-letter').text(letter);
+            $(this).addClass('used');
+            highlightedBlank.removeClass('highlighted');
+            
+            // 自动高亮下一个空格
+            autoHighlightNextBlank(wordCard, highlightedBlank);
+            
+            // 检查单词是否完成
+            setTimeout(() => checkWordCompletion(wordCard), 500);
+          }
+        });
+        
+        // 为空格添加点击事件
+        wordCard.find('.blank-container').click(function() {
+          const currentBlank = $(this);
+          const existingLetter = currentBlank.find('.blank-letter').text();
+          
+          // 如果空格已经有字母，将字母退回到候选区
+          if (existingLetter) {
+            const candidatesContainer = wordCard.find('.candidate-letters');
+            const existingCandidate = candidatesContainer.find(`[data-letter="${existingLetter}"]`);
+            
+            if (existingCandidate.length === 0) {
+              // 重新创建候选字母
+              const newCandidate = $(`<div class="candidate-letter" data-letter="${existingLetter}">${existingLetter}</div>`);
+              candidatesContainer.append(newCandidate);
+              newCandidate.click(function() {
+                handleCandidateClick($(this), wordCard);
+              });
+            } else {
+              existingCandidate.removeClass('used');
+            }
+            
+            // 清空空格
+            currentBlank.find('.blank-letter').text('');
+            
+            // 退出正确或错误状态，还原为初始状态
+            wordCard.removeClass('correct incorrect');
+          }
+          
+          // 移除其他空格的高亮
+          wordCard.find('.blank-container').removeClass('highlighted');
+          // 高亮当前空格
+          currentBlank.addClass('highlighted');
+        });
+        
+        // 初始高亮第一个空格
+        const firstBlank = wordCard.find('.blank-container').first();
+        if (firstBlank.length > 0) {
+          firstBlank.addClass('highlighted');
+        }
+      });
+      
+      // 候选字母点击处理函数
+      function handleCandidateClick(candidateElement, wordCard) {
+        const letter = candidateElement.data('letter');
+        const highlightedBlank = wordCard.find('.blank-container.highlighted');
+        
+        if (highlightedBlank.length > 0) {
+          // 如果空格已经有字母，先还原到候选区
+          const existingLetter = highlightedBlank.find('.blank-letter').text();
+          if (existingLetter) {
+            const existingCandidate = wordCard.find(`.candidate-letter[data-letter="${existingLetter}"]`);
+            if (existingCandidate.length === 0) {
+              // 重新创建候选字母
+              const newCandidate = $(`<div class="candidate-letter" data-letter="${existingLetter}">${existingLetter}</div>`);
+              wordCard.find('.candidate-letters').append(newCandidate);
+              newCandidate.click(function() {
+                handleCandidateClick($(this), wordCard);
+              });
+            } else {
+              existingCandidate.removeClass('used');
+            }
+          }
+          
+          // 放置新字母
+          highlightedBlank.find('.blank-letter').text(letter);
+          candidateElement.addClass('used');
+          highlightedBlank.removeClass('highlighted');
+          
+          // 自动高亮下一个空格
+          autoHighlightNextBlank(wordCard, highlightedBlank);
+          
+          // 检查单词是否完成
+          setTimeout(() => checkWordCompletion(wordCard), 500);
+        }
+      }
+      
+      // 自动高亮下一个空格函数
+      function autoHighlightNextBlank(wordCard, currentBlank) {
+        const allBlanks = wordCard.find('.blank-container');
+        const currentIndex = allBlanks.index(currentBlank);
+        
+        // 查找下一个空的空格
+        for (let i = currentIndex + 1; i < allBlanks.length; i++) {
+          const nextBlank = allBlanks.eq(i);
+          if (!nextBlank.find('.blank-letter').text()) {
+            // 移除其他空格的高亮
+            allBlanks.removeClass('highlighted');
+            // 高亮下一个空格
+            nextBlank.addClass('highlighted');
+            return;
+          }
+        }
+        
+        // 如果后面没有空空格，查找前面的空空格
+        for (let i = 0; i < currentIndex; i++) {
+          const prevBlank = allBlanks.eq(i);
+          if (!prevBlank.find('.blank-letter').text()) {
+            // 移除其他空格的高亮
+            allBlanks.removeClass('highlighted');
+            // 高亮前面的空格
+            prevBlank.addClass('highlighted');
+            return;
+          }
+        }
+        
+        // 如果没有空空格，移除所有高亮
+        allBlanks.removeClass('highlighted');
+      }
+      
+      // 检查单词是否完成
+      function checkWordCompletion(wordCard) {
+        const blanks = wordCard.find('.blank-container');
+        let isComplete = true;
+        
+        blanks.each(function() {
+          if (!$(this).find('.blank-letter').text()) {
+            isComplete = false;
+            return false; // break loop
+          }
+        });
+        
+        if (isComplete) {
+          // 检查答案是否正确
+          const word = wordCard.data('word');
+          let isCorrect = true;
+          
+          blanks.each(function() {
+            const userLetter = $(this).find('.blank-letter').text().toLowerCase();
+            const correctLetter = $(this).data('correct').toLowerCase();
+            if (userLetter !== correctLetter) {
+              isCorrect = false;
+              return false; // break loop
+            }
+          });
+          
+          // 设置单词卡状态
+          wordCard.removeClass('correct incorrect');
+          if (isCorrect) {
+            wordCard.addClass('correct');
+          } else {
+            wordCard.addClass('incorrect');
+          }
+        }
+      }
+      
+      // 添加提交按钮点击事件
+      $('#submitBtn').click(function() {
+        // 获取所有单词卡
+        const wordCards = document.querySelectorAll('.word-card');
+        const errorWordIds = [];
+        const allWordIds = [];
+        let correctCount = 0;
+        
+        // 检查每个单词卡
+        wordCards.forEach(function(wordCard) {
+          const wordId = wordCard.dataset.id;
+          allWordIds.push(wordId);
+          
+          const correctWord = wordCard.dataset.word;
+          const blanks = wordCard.querySelectorAll('.blank-container');
+          let isCorrect = true;
+          
+          // 检查每个空格
+          blanks.forEach(function(blank) {
+            const userLetter = blank.querySelector('.blank-letter').textContent;
+            const index = parseInt(blank.dataset.index);
+            
+            if (!userLetter || userLetter.toLowerCase() !== correctWord[index].toLowerCase()) {
+              isCorrect = false;
+            }
+          });
+          
+          // 根据正确性设置样式
+          if (isCorrect) {
+            wordCard.classList.add('correct');
+            correctCount++;
+          } else {
+            wordCard.classList.add('incorrect');
+            errorWordIds.push(wordId);
+          }
+        });
+        
+        // 判断是否全部正确
+        if (errorWordIds.length === 0) {
+          // 全部正确
+          Swal.fire({
+            title: '恭喜你，全对!',
+            text: `奖励：<%=exercise.award%>`,
+            icon: 'success',
+            confirmButtonText: '确定'
+          }).then((result) => {
+            if (result.isConfirmed) {
+              // 调用完成接口
+              $.ajax({
+                url: `/vocab_exercise/done/<%=exercise._id%>`,
+                type: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${getToken()}`
+                },
+                success: function(response) {
+                  if (response.err_code === 0) {
+                    window.location.href = '/exercise/index';
+                  } else {
+                    Swal.fire('错误', response.err_msg, 'error');
+                  }
+                },
+                error: function() {
+                  Swal.fire('错误', '操作失败，请稍后重试', 'error');
+                }
+              });
+            }
+          });
+        } else {
+          // 有错误
+          Swal.fire({
+            title: '继续努力!',
+            text: `答对${correctCount}个，答错${errorWordIds.length}个，请继续努力！`,
+            icon: 'info',
+            confirmButtonText: '确定'
+          }).then((result) => {
+            if (result.isConfirmed) {
+              // 调用错误记录接口
+              $.ajax({
+                url: `/vocab_exercise/error/<%=user._id%>`,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                  vocab_ids: errorWordIds,
+                  all_vocab_ids: allWordIds
+                }),
+                headers: {
+                  'Authorization': `Bearer ${getToken()}`
+                },
+                success: function(response) {
+                  if (response.err_code === 0) {
+                    // 移除正确的单词卡
+                    wordCards.forEach(function(wordCard) {
+                      const wordId = wordCard.dataset.id;
+                      if (!errorWordIds.includes(wordId)) {
+                        wordCard.remove();
+                      } else {
+                        // 恢复错误单词卡的样式
+                        wordCard.classList.remove('incorrect');
+                        
+                        // 清空所有空格
+                        const blanks = wordCard.querySelectorAll('.blank-letter');
+                        blanks.forEach(function(blank) {
+                          blank.textContent = '';
+                        });
+                        
+                        // 恢复候选字母
+                        const candidates = wordCard.querySelectorAll('.candidate-letter.used');
+                        candidates.forEach(function(candidate) {
+                          candidate.classList.remove('used');
+                        });
+                      }
+                    });
+                  } else {
+                    Swal.fire('错误', response.err_msg, 'error');
+                  }
+                },
+                error: function() {
+                  Swal.fire('错误', '操作失败，请稍后重试', 'error');
+                }
+              });
+            }
+          });
+        }
+      });
+      
+      // 查看单词按钮点击事件
+      $('.peek-btn').click(function() {
+        const wordIndex = $(this).data('word-index');
+        const wordCard = $(`#word-${wordIndex}`);
+        const wordId = wordCard.data('id');
+        const revealElement = $(`#reveal-${wordIndex}`);
+        const icon = $(this).find('i');
+        
+        // 切换图标和显示状态
+        if (icon.hasClass('fa-eye-slash')) {
+          // 显示单词
+          icon.removeClass('fa-eye-slash').addClass('fa-eye');
+          revealElement.slideDown();
+          
+          // 将单词ID添加到错误单词数组
+          if (!errorWordIds.includes(wordId)) {
+            errorWordIds.push(wordId);
+          }
+          
+          // 20秒后自动隐藏
+          setTimeout(() => {
+            icon.removeClass('fa-eye').addClass('fa-eye-slash');
+            revealElement.slideUp();
+          }, 20000);
+        } else {
+          // 隐藏单词
+          icon.removeClass('fa-eye').addClass('fa-eye-slash');
+          revealElement.slideUp();
+        }
+      });
+      
+      // 语音播放按钮点击事件
+      $('.play-btn').click(function() {
+        const playBtn = $(this);
+        const wordId = playBtn.data('word-id');
+        const icon = playBtn.find('i');
+        
+        // 防止重复点击
+        if (playBtn.hasClass('playing')) {
+          return;
+        }
+        
+        // 添加播放状态
+        playBtn.addClass('playing');
+        icon.removeClass('fa-volume-up').addClass('fa-volume-mute');
+        
+        // 创建音频元素
+        const audio = new Audio(`/exercise/playsample?id=${wordId}`);
+        
+        // 音频加载完成后播放
+        audio.addEventListener('canplaythrough', function() {
+          audio.play();
+        });
+        
+        // 音频播放结束后的处理
+        audio.addEventListener('ended', function() {
+          playBtn.removeClass('playing');
+          icon.removeClass('fa-volume-mute').addClass('fa-volume-up');
+          audio.remove(); // 清理音频元素
+        });
+        
+        // 音频播放错误的处理
+        audio.addEventListener('error', function() {
+          playBtn.removeClass('playing');
+          icon.removeClass('fa-volume-mute').addClass('fa-volume-up');
+          Swal.fire('错误', '音频播放失败', 'error');
+          audio.remove(); // 清理音频元素
+        });
+        
+        // 音频加载失败的处理
+        audio.addEventListener('abort', function() {
+          playBtn.removeClass('playing');
+          icon.removeClass('fa-volume-mute').addClass('fa-volume-up');
+          audio.remove(); // 清理音频元素
+        });
+      });
+      
+      // 生成候选字母函数
+      function generateCandidateLetters(word, gapIndices) {
+        const gapLetters = gapIndices.map(i => word[i].toLowerCase());
+        const allLetters = 'abcdefghijklmnopqrstuvwxyz';
+        
+        // 随机选择额外的字母
+        const extraLetters = [];
+        const availableLetters = allLetters.split('').filter(letter => !gapLetters.includes(letter));
+        
+        // 添加2个随机字母
+        for (let i = 0; i < 2; i++) {
+          if (availableLetters.length > 0) {
+            const randomIndex = Math.floor(Math.random() * availableLetters.length);
+            extraLetters.push(availableLetters[randomIndex]);
+            availableLetters.splice(randomIndex, 1);
+          }
+        }
+        
+        // 合并并随机排序
+        const allCandidateLetters = [...gapLetters, ...extraLetters];
+        return shuffleArray(allCandidateLetters);
+      }
+      
+      // 数组随机排序函数
+      function shuffleArray(array) {
+        const shuffled = [...array];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+      }
+      
+      function getToken() {
+        return document.cookie.replace(/(?:(?:^|.*;\s*)token\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+      }
+    });
+  </script>
+</body>
+</html> 
